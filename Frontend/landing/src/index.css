@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
+
+@theme {
+    /* Colors */
+    --color-primary-50: #f0f9ff;
+    --color-primary-100: #e0f2fe;
+    --color-primary-200: #bae6fd;
+    --color-primary-300: #7dd3fc;
+    --color-primary-400: #38bdf8;
+    --color-primary-500: #0ea5e9;
+    --color-primary-600: #0284c7;
+    --color-primary-700: #0369a1;
+    --color-primary-800: #075985;
+    --color-primary-900: #0c4a6e;
+    --color-primary-950: #082f49;
+
+    --color-accent-stone: #a8a29e;
+    --color-accent-gold: #eab308;
+
+    /* Fonts */
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+
+    /* Animations */
+    --animate-pulse-slow: pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    --animate-float: float 6s ease-in-out infinite;
+    --animate-spin-slow: spin 20s linear infinite;
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+    }
+}
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #0c0a09;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #0c0a09;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Premium Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0c0a09;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #292524;
+    border-radius: 10px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #44403c;
+}
+
+/* Firefox Support */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #292524 #0c0a09;
+}
+
+/* Base Glassmorphism Shared Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-stone {
+    background: rgba(28, 25, 23, 0.4);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(68, 64, 60, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-stone::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
+    opacity: 0.03;
+    pointer-events: none;
+}
+
+.glass-bright {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradients */
+.text-gradient {
+  background: linear-gradient(135deg, #fff 0%, #a8a29e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-landing {
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), #1c1917 0%, #0c0a09 100%);
+}
+
+.glow-stone {
+    box-shadow: 0 0 50px -12px rgba(168, 162, 158, 0.2);
+}
+
+/* Custom Background Animations */
+.data-mesh {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
+    background-size: 40px 40px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.data-mesh-moving {
+    animation: move-mesh 100s linear infinite;
+}
+
+@keyframes move-mesh {
+    from { background-position: 0 0; }
+    to { background-position: 800px 800px; }
+}
+
+.glow-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.15;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes float-slow {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(100px, 50px); }
+    50% { transform: translate(-50px, 100px); }
+    75% { transform: translate(-100px, -50px); }
+}
+
+.animate-float-slow {
+    animation: float-slow 25s infinite ease-in-out;
+}
+
+/* Bento Grid Utilities */
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(2, minmax(200px, auto));
+    gap: 1.5rem;
+}
+
+.bento-item {
+    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.bento-item:hover {
+    transform: scale(1.01);
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+}
+
+/* Grainy Texture */
+.grainy {
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxmZWRpZmZ1c2VsaWdodGluZyBkaWZmdXNlQ29uc3RhbnQ9IjAuNyIgc3VyZmFjZVNjYWxlPSIyIiByZXN1bHQ9ImxpZ2h0Ij48ZmVkaXN0YW50bGlnaHQgYXppbXV0aD0iNDUiIGVsZXZhdGlvbj0iNDUiLz48L2ZlZGlmZnVzZWxpZ2h0aW5nPjxmZXR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjY1IiBudW1PY3RhdmVzPSIzIiByZXN1bHQ9Im5vaXNlIi8+PGZlY29tcG9zaXRlIGluPSJub2lzZSIgaW4yPSJsaWdodCIgb3BlcmF0b3I9ImluIi8+PC9zdmc+');
+    opacity: 0.05;
+    pointer-events: none;
+    mix-blend-mode: soft-light;
+}
