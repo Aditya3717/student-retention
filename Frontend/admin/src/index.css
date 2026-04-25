@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+    /* Admin Console Custom Theme (Red Spectrum) */
+    --color-admin-50: #fdf2f2;
+    --color-admin-100: #fde8e8;
+    --color-admin-200: #fbd5d5;
+    --color-admin-300: #f8b4b4;
+    --color-admin-400: #f98080;
+    --color-admin-500: #f05252;
+    --color-admin-600: #e02424;
+    --color-admin-700: #c81e1e;
+    --color-admin-800: #9b1c1c;
+    --color-admin-900: #771d1d;
+}
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #0c0a09;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Base Glassmorphism Shared Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-stone {
+    background: rgba(28, 25, 23, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(68, 64, 60, 0.3);
+}
+
+/* Premium Institutional Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0c0a09;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #292524;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #44403c;
+}
