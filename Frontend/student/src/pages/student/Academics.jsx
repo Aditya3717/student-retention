@@ -169,7 +169,7 @@ const Academics = () => {
                 >
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-primary-400 text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic">Cumulative GPA</p>
+                            <p className="text-primary-400 text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic">Cumulative CGPA</p>
                             <h3 className="text-6xl font-black text-white mb-2 italic tracking-tighter">{cgpa.toFixed(2)}</h3>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Overall Grade Point Average</p>
                         </div>

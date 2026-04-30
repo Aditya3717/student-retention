@@ -10,6 +10,8 @@ export default defineConfig({
   ],
   server: {
     port: 5174,
+    // Serve index.html for all 404s so React Router handles routing
+    historyApiFallback: true,
   },
 })
 

@@ -98,23 +98,22 @@ const StudentLayout = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50 font-sans relative">
-            {/* Ambient Background System */}
-            <div className="absolute inset-0 z-0">
+            {/* Ambient Background System — clipped in its own fixed layer */}
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.05),transparent_70%)]" />
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-sky-500/10 rounded-full blur-[120px] animate-pulse" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
-                
                 {/* Data Mesh effect */}
-                <div className="absolute inset-0 opacity-[0.03]" 
-                    style={{ 
+                <div className="absolute inset-0 opacity-[0.03]"
+                    style={{
                         backgroundImage: `radial-gradient(#94a3b8 1px, transparent 1px)`,
-                        backgroundSize: '40px 40px' 
-                    }} 
+                        backgroundSize: '40px 40px'
+                    }}
                 />
             </div>
 
-            {/* Top Navbar */}
-            <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50 px-6 flex items-center justify-between shadow-lg shadow-black/20">
+            {/* Top Navbar — fixed so it stays on top while scrolling */}
+            <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-xl fixed top-0 left-0 right-0 z-50 px-6 flex items-center justify-between shadow-lg shadow-black/20">
                 <div className="flex items-center gap-8">
                     {/* Logo */}
                     <div className="flex items-center gap-3">
@@ -260,8 +259,8 @@ const StudentLayout = () => {
                 </div>{/* end flex items-center gap-2 */}
             </header>
 
-            {/* Main Content */}
-            <main className="flex-1 relative z-10">
+            {/* Main Content — pt-16 offsets the fixed navbar height */}
+            <main className="relative z-10 pt-16 min-h-[calc(100vh-4rem)]">
                 <div className="p-8 max-w-7xl mx-auto">
                     <motion.div
                         key={window.location.pathname}
@@ -273,11 +272,10 @@ const StudentLayout = () => {
                     </motion.div>
                 </div>
             </main>
+
         </div>
     );
 };
 
-
-
-
 export default StudentLayout;
+

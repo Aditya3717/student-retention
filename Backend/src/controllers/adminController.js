@@ -6,8 +6,94 @@ import StudentProfile from '../models/StudentProfile.js';
 // @access  Private (Admin)
 export const getAllStudents = async (req, res) => {
     try {
-        const students = await StudentProfile.find().populate('user', 'name email');
-        res.status(200).json({ success: true, count: students.length, data: students });
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = req.query.limit === 'all' ? 'all' : (parseInt(req.query.limit, 10) || 50);
+        const search = req.query.search || '';
+
+        let query = {};
+        if (search) {
+            const matchingUsers = await User.find({ name: { $regex: search, $options: 'i' } }).select('_id');
+            const userIds = matchingUsers.map(u => u._id);
+            query.$or = [
+                { studentId: { $regex: search, $options: 'i' } },
+                { user: { $in: userIds } }
+            ];
+        }
+
+        let studentsQuery = StudentProfile.find(query).populate('user', 'name email');
+        
+        if (limit === 'all') {
+            const students = await studentsQuery;
+            return res.status(200).json({ success: true, count: students.length, data: students });
+        } else {
+            const total = await StudentProfile.countDocuments(query);
+            const students = await studentsQuery.skip((page - 1) * limit).limit(limit);
+            return res.status(200).json({ 
+                success: true, 
+                count: students.length, 
+                total,
+                page,
+                pages: Math.ceil(total / limit),
+                data: students 
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get dashboard aggregated stats
+// @route   GET /api/admin/dashboard-stats
+// @access  Private (Admin)
+export const getDashboardStats = async (req, res) => {
+    try {
+        const totalStudents = await StudentProfile.countDocuments();
+        
+        const distribution = { High: 0, Medium: 0, Low: 0 };
+        const atRiskStats = await StudentProfile.aggregate([
+            { $group: { _id: "$dropoutRisk.category", count: { $sum: 1 } } }
+        ]);
+        atRiskStats.forEach(stat => {
+            if(stat._id) distribution[stat._id] = stat.count;
+        });
+
+        const avgAttData = await StudentProfile.aggregate([
+            { $group: { _id: null, avg: { $avg: "$attendance" } } }
+        ]);
+        const avgAttendance = avgAttData.length > 0 ? avgAttData[0].avg.toFixed(1) : 0;
+
+        const gpaBuckets = [0, 0, 0, 0];
+        const gpaData = await StudentProfile.aggregate([
+            {
+                $bucket: {
+                    groupBy: "$gpa",
+                    boundaries: [0, 2, 3, 3.5, 4.1],
+                    default: "Other",
+                    output: { count: { $sum: 1 } }
+                }
+            }
+        ]);
+        gpaData.forEach(b => {
+            if (b._id === 0) gpaBuckets[0] = b.count;
+            else if (b._id === 2) gpaBuckets[1] = b.count;
+            else if (b._id === 3) gpaBuckets[2] = b.count;
+            else if (b._id === 3.5) gpaBuckets[3] = b.count;
+        });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                totalStudents,
+                atRisk: distribution['High'] || 0,
+                avgAttendance,
+                distribution: [
+                    distribution['High'] || 0,
+                    distribution['Medium'] || 0,
+                    distribution['Low'] || 0
+                ],
+                gpaDistribution: gpaBuckets
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

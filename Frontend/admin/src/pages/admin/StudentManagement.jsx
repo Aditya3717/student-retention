@@ -37,12 +37,18 @@ const StudentManagement = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalStudents, setTotalStudents] = useState(0);
 
     const fetchStudents = async () => {
+        setIsLoading(true);
         try {
-            const response = await api.get('/admin/students');
+            const response = await api.get(`/admin/students?page=${page}&limit=50&search=${searchTerm}`);
             if (response.data.success) {
                 setStudents(response.data.data);
+                setTotalPages(response.data.pages);
+                setTotalStudents(response.data.total);
             }
         } catch (error) {
             console.error('Error fetching students:', error);
@@ -52,18 +58,18 @@ const StudentManagement = () => {
     };
 
     useEffect(() => {
-        fetchStudents();
-    }, []);
+        const delayDebounceFn = setTimeout(() => {
+            fetchStudents();
+        }, 300);
+        return () => clearTimeout(delayDebounceFn);
+    }, [page, searchTerm]);
 
     const handleEdit = (student) => {
         setSelectedStudent(student);
         setIsEditModalOpen(true);
     };
 
-    const filteredStudents = students.filter(s =>
-        s.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.studentId?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredStudents = students;
 
     return (
         <div className="space-y-6 relative z-10">
@@ -80,7 +86,7 @@ const StudentManagement = () => {
                             placeholder="Search students..."
                             className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm text-white outline-none focus:border-indigo-500/50 transition-colors w-64 placeholder-slate-500"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                         />
                     </div>
                     <button 
@@ -170,10 +176,18 @@ const StudentManagement = () => {
                 )}
 
                 <div className="px-8 py-5 border-t border-white/5 bg-white/[0.01] flex items-center justify-between text-xs text-slate-500 font-semibold relative z-10">
-                    <p>Showing {filteredStudents.length} entries</p>
+                    <p>Showing page {page} of {totalPages} ({totalStudents} total entries)</p>
                     <div className="flex gap-2">
-                        <button className="p-1.5 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/10"><ChevronLeft size={16} /></button>
-                        <button className="p-1.5 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/10"><ChevronRight size={16} /></button>
+                        <button 
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="p-1.5 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/10 disabled:opacity-50"
+                        ><ChevronLeft size={16} /></button>
+                        <button 
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="p-1.5 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/10 disabled:opacity-50"
+                        ><ChevronRight size={16} /></button>
                     </div>
                 </div>
             </div>

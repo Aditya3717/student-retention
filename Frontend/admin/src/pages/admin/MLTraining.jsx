@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
 import {
@@ -112,19 +113,22 @@ const MLTraining = () => {
     return (
         <div className="space-y-6 relative z-10">
             {/* Toast */}
-            <AnimatePresence>
-                {toast && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                        className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border text-sm font-bold backdrop-blur-xl
-                            ${toast.type === 'error' ? 'bg-rose-900/80 border-rose-500/30 text-rose-200' : 'bg-emerald-900/80 border-emerald-500/30 text-emerald-200'}`}
-                    >
-                        {toast.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
-                        {toast.message}
-                        <button onClick={() => setToast(null)}><X size={14} /></button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {toast && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                            className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border text-sm font-bold backdrop-blur-xl
+                                ${toast.type === 'error' ? 'bg-rose-900/80 border-rose-500/30 text-rose-200' : 'bg-emerald-900/80 border-emerald-500/30 text-emerald-200'}`}
+                        >
+                            {toast.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
+                            {toast.message}
+                            <button onClick={() => setToast(null)}><X size={14} /></button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

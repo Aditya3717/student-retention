@@ -78,77 +78,16 @@ const CareerCard = ({ title, matchPercentage, index }) => (
     </motion.div>
 );
 
-/* ── Edit Modal ─────────────────────────────────────── */
-const EditModal = ({ profile, onClose, onSave }) => {
-    const [form, setForm] = useState({ name: profile.name || '', email: profile.email || '' });
-    const [saving, setSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
-
-    const submit = (e) => {
-        e.preventDefault();
-        setSaving(true);
-        setTimeout(() => {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            localStorage.setItem('user', JSON.stringify({ ...user, name: form.name, email: form.email }));
-            setSaving(false); setSaved(true);
-            setTimeout(() => { onSave(form); onClose(); }, 900);
-        }, 800);
-    };
-
-    return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl"
-            onClick={onClose}
-        >
-            <motion.div initial={{ scale: 0.92, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 20 }}
-                onClick={e => e.stopPropagation()}
-                className="w-full max-w-md bg-slate-900 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl"
-            >
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-black text-white italic uppercase">Edit Profile</h3>
-                    <button onClick={onClose} className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-slate-500 hover:text-white transition-all">
-                        <X size={16} />
-                    </button>
-                </div>
-                <form onSubmit={submit} className="space-y-4">
-                    {[
-                        { label: 'Full Name', key: 'name', type: 'text', icon: User },
-                        { label: 'Email Address', key: 'email', type: 'email', icon: Mail },
-                    ].map(f => (
-                        <div key={f.key} className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{f.label}</label>
-                            <div className="relative">
-                                <f.icon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
-                                <input type={f.type} value={form[f.key]}
-                                    onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                                    className="w-full bg-slate-800/60 border border-white/8 rounded-xl pl-9 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary-500/50 transition-colors"
-                                />
-                            </div>
-                        </div>
-                    ))}
-                    <p className="text-[10px] text-slate-600">Student ID and academic data can only be changed by your administrator.</p>
-                    <button type="submit" disabled={saving}
-                        className="w-full py-3.5 bg-primary-600 hover:bg-primary-500 text-white font-black text-[11px] uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70">
-                        {saved ? <><CheckCircle2 size={15} /> Saved!</> : saving ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : <><Save size={15} /> Save Changes</>}
-                    </button>
-                </form>
-            </motion.div>
-        </motion.div>
-    );
-};
 
 /* ── Main Profile ───────────────────────────────────── */
 const Profile = () => {
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [editOpen, setEditOpen] = useState(false);
-    const [localName, setLocalName] = useState('');
     const navigate = useNavigate();
     const localUser = JSON.parse(localStorage.getItem('user') || '{}');
 
     useEffect(() => {
-        setLocalName(localUser.name || '');
 
         const loadProfile = async () => {
             try {
@@ -202,7 +141,7 @@ const Profile = () => {
         </div>
     );
 
-    const name = localName || profile?.name || localUser.name || 'Student';
+    const name = profile?.name || localUser.name || 'Student';
     const email = profile?.email || localUser.email || '—';
     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     const risk = profile?.dropoutRisk?.category || 'Low';
@@ -213,26 +152,12 @@ const Profile = () => {
 
     return (
         <div className="space-y-8 pb-12">
-            <AnimatePresence>
-                {editOpen && (
-                    <EditModal
-                        profile={{ name, email }}
-                        onClose={() => setEditOpen(false)}
-                        onSave={f => setLocalName(f.name)}
-                    />
-                )}
-            </AnimatePresence>
-
             {/* Page Header */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">My Profile</h2>
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Your Academic Identity</p>
                 </div>
-                <button onClick={() => setEditOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/80 border border-white/8 text-slate-300 hover:text-white hover:bg-slate-700 font-bold text-xs uppercase tracking-widest rounded-xl transition-all">
-                    <Edit3 size={14} /> Edit Profile
-                </button>
             </motion.div>
 
             {/* Hero Card */}
@@ -275,7 +200,7 @@ const Profile = () => {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard icon={TrendingUp}     label="Current GPA"      value={profile?.gpa?.toFixed(2) || '—'}    color="text-sky-400"     delay={0.10} />
+                <StatCard icon={TrendingUp}     label="Current CGPA"      value={profile?.gpa?.toFixed(2) || '—'}    color="text-sky-400"     delay={0.10} />
                 <StatCard icon={Calendar}       label="Attendance"       value={`${profile?.attendance || 0}%`}      color="text-indigo-400"  delay={0.14} />
                 <StatCard icon={BookOpen}       label="Credits Earned"   value={totalCredits}                        color="text-emerald-400" delay={0.18} />
                 <StatCard icon={Award}          label="Semesters"        value={totalSemesters}                      color="text-amber-400"   delay={0.22} />

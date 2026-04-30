@@ -68,36 +68,9 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const response = await api.get('/admin/students');
+            const response = await api.get('/admin/dashboard-stats');
             if (response.data.success) {
-                const students = response.data.data;
-                const total = students.length;
-                
-                // Risk distribution
-                const atRisk = students.filter(s => s.dropoutRisk?.category === 'High').length;
-                const atRiskMed = students.filter(s => s.dropoutRisk?.category === 'Medium').length;
-                const atRiskLow = students.filter(s => s.dropoutRisk?.category === 'Low').length;
-                
-                // GPA distribution buckets
-                const gpaBuckets = [0, 0, 0, 0]; // <2, 2-3, 3-3.5, 3.5-4
-                students.forEach(s => {
-                    if (s.gpa < 2) gpaBuckets[0]++;
-                    else if (s.gpa < 3) gpaBuckets[1]++;
-                    else if (s.gpa < 3.5) gpaBuckets[2]++;
-                    else gpaBuckets[3]++;
-                });
-
-                const avgAtt = total > 0 
-                    ? (students.reduce((acc, s) => acc + s.attendance, 0) / total).toFixed(1) 
-                    : 0;
-
-                setStats({
-                    totalStudents: total,
-                    atRisk: atRisk,
-                    avgAttendance: avgAtt,
-                    distribution: [atRisk, atRiskMed, atRiskLow],
-                    gpaDistribution: gpaBuckets
-                });
+                setStats(response.data.data);
             }
         } catch (error) {
             console.error('Error fetching dashboard stats:', error);
@@ -128,7 +101,7 @@ const AdminDashboard = () => {
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            const response = await api.get('/admin/students');
+            const response = await api.get('/admin/students?limit=all');
             if (response.data.success) {
                 const students = response.data.data;
                 
