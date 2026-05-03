@@ -64,25 +64,32 @@ class TrainRequest(BaseModel):
 
 # --- Helpers ---
 def generate_synthetic_dataset(n_samples: int = 1000):
-    """Generate realistic synthetic student data for training."""
+    """Generate realistic synthetic student data for training — 10-point CGPA scale."""
     np.random.seed(42)
-    gpa = np.clip(np.random.normal(2.8, 0.7, n_samples), 0, 4.0)
-    attendance = np.clip(np.random.normal(78, 15, n_samples), 0, 100)
-    credits_earned = np.random.randint(60, 130, n_samples)
+
+    # 10-point CGPA scale: mean ~6.5 with spread, reflecting real LPU-style data
+    gpa = np.clip(np.random.normal(6.5, 1.5, n_samples), 0, 10.0)
+    attendance = np.clip(np.random.normal(82, 12, n_samples), 0, 100)
+    credits_earned = np.random.randint(60, 160, n_samples)
     extracurricular_score = np.clip(np.random.normal(50, 20, n_samples), 0, 100)
-    prev_gpa = np.clip(gpa + np.random.normal(0, 0.3, n_samples), 0, 4.0)
+    prev_gpa = np.clip(gpa + np.random.normal(0, 0.5, n_samples), 0, 10.0)
 
-    # Risk label derived from realistic rules
-    risk_score = (
-        (4.0 - gpa) * 20 +
-        (100 - attendance) * 0.5 +
-        (130 - credits_earned) * 0.2 +
-        (100 - extracurricular_score) * 0.1 +
-        (4.0 - prev_gpa) * 10
+    # Risk score: CGPA contributes 60%, attendance 40%
+    # Higher score = higher risk
+    gpa_component        = (gpa / 10.0) * 60          # 0-60  (higher CGPA → lower risk)
+    attendance_component = (attendance / 100.0) * 40   # 0-40  (higher att  → lower risk)
+    base_risk = 100 - (gpa_component + attendance_component)
+
+    # Small contributions from other features
+    extra_penalty = (
+        (160 - credits_earned) * 0.05 +
+        (100 - extracurricular_score) * 0.02 +
+        (10.0 - prev_gpa) * 1.0
     )
-    risk_score = np.clip(risk_score + np.random.normal(0, 5, n_samples), 0, 100)
+    risk_score = np.clip(base_risk + extra_penalty * 0.3 + np.random.normal(0, 3, n_samples), 0, 100)
 
-    labels = np.where(risk_score > 65, 'High', np.where(risk_score > 35, 'Medium', 'Low'))
+    # Calibrated thresholds matching the backend rule-based engine
+    labels = np.where(risk_score > 65, 'High', np.where(risk_score > 40, 'Medium', 'Low'))
 
     df = pd.DataFrame({
         'gpa': gpa,
@@ -164,10 +171,11 @@ def load_model_if_exists():
 def predict_single(student: StudentData):
     """Run inference on a single student."""
     if model_store["model"] is None:
-        # Fallback rule-based
-        risk_score = 100 - (student.gpa * 15 + student.attendance * 0.5)
-        risk_score = max(0, min(100, risk_score))
-        category = "High" if risk_score > 70 else ("Medium" if risk_score > 35 else "Low")
+        # Fallback rule-based (10-point CGPA scale)
+        gpa_comp  = (student.gpa / 10.0) * 60
+        att_comp  = (student.attendance / 100.0) * 40
+        risk_score = max(0, min(100, 100 - (gpa_comp + att_comp)))
+        category = "High" if risk_score > 65 else ("Medium" if risk_score > 40 else "Low")
         return {"risk_score": round(risk_score, 2), "category": category, "model_used": "rule_based"}
 
     clf = model_store["model"]

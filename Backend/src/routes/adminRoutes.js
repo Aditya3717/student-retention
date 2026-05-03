@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllStudents, getDashboardStats, getAtRiskStudents, recalculateRisk, getAllAdmins, createAdmin, updateStudentProfile, createStudent, getPendingVerifications, verifyStudent } from '../controllers/adminController.js';
+import { getAllStudents, getDashboardStats, getAtRiskStudents, recalculateRisk, getAllAdmins, createAdmin, updateStudentProfile, createStudent, getPendingVerifications, verifyStudent, getDistinctBatches } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -15,6 +15,7 @@ router.get('/at-risk', getAtRiskStudents);
 router.post('/recalculate-risk', recalculateRisk);
 router.get('/pending-verifications', getPendingVerifications);
 router.put('/verify-student/:id', verifyStudent);
+router.get('/batches', getDistinctBatches);
 
 // Team Management
 router.get('/team', getAllAdmins);

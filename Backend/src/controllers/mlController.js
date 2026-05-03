@@ -77,20 +77,36 @@ export const runBulkPredictions = async (req, res) => {
             return res.status(200).json({ success: true, message: 'No student profiles found to predict.', updated: 0 });
         }
 
-        const studentDataArray = profiles.map(p => ({
-            gpa: p.gpa || 0,
-            attendance: p.attendance || 0,
-            credits_earned: 120,
-            extracurricular_score: 50,
-            previous_semester_gpa: p.gpa || 0,
-        }));
+        const studentDataArray = profiles.map(p => {
+            // Derive effective CGPA from semester history when root field is 0
+            const semGpas = (p.academicHistory || []).map(h => h.gpa).filter(g => g > 0);
+            const effectiveCgpa = (p.gpa && p.gpa > 0)
+                ? p.gpa
+                : semGpas.length > 0 ? semGpas.reduce((a, b) => a + b, 0) / semGpas.length : 0;
+
+            // Real credits from academic history
+            const creditsEarned = (p.academicHistory || []).reduce(
+                (acc, h) => acc + (h.subjects || []).reduce((s, sub) => s + (sub.credits || 0), 0), 0
+            ) || 120;
+
+            // Previous semester CGPA (second-to-last semester if available)
+            const prevSemGpa = semGpas.length >= 2 ? semGpas[semGpas.length - 2] : effectiveCgpa;
+
+            return {
+                gpa: effectiveCgpa,
+                attendance: p.attendance || 0,
+                credits_earned: creditsEarned,
+                extracurricular_score: 50,
+                previous_semester_gpa: prevSemGpa,
+            };
+        });
 
         const student_ids = profiles.map(p => p._id.toString());
 
         const mlResponse = await axios.post(`${ML_SERVICE_URL}/ml/predict-bulk`, {
             students: studentDataArray,
             student_ids,
-        }, { timeout: 60000 });
+        }, { timeout: 300000 }); // 5 min — handles 8000+ students
 
         const predictions = mlResponse.data.predictions;
 
@@ -99,8 +115,8 @@ export const runBulkPredictions = async (req, res) => {
             if (!profile) return;
 
             const reasonMap = {
-                High: profile.attendance < 75 ? 'Critical Attendance' : 'Critical GPA',
-                Medium: profile.attendance < 85 ? 'Low Engagement' : 'Academic Warning',
+                High: profile.attendance < 70 ? 'Critical Attendance' : 'Critical CGPA',
+                Medium: profile.attendance < 80 ? 'Low Engagement' : 'Academic Warning',
                 Low: 'Steady Performance',
             };
 

@@ -6,11 +6,15 @@ import StudentProfile from '../models/StudentProfile.js';
 // @access  Private (Admin)
 export const getAllStudents = async (req, res) => {
     try {
-        const page = parseInt(req.query.page, 10) || 1;
-        const limit = req.query.limit === 'all' ? 'all' : (parseInt(req.query.limit, 10) || 50);
+        const page   = parseInt(req.query.page, 10) || 1;
+        const limit  = req.query.limit === 'all' ? 'all' : (parseInt(req.query.limit, 10) || 50);
         const search = req.query.search || '';
+        const batch  = req.query.batch  || '';   // e.g. "123" for 2023 batch prefix
+        const risk   = req.query.risk   || '';   // "High" | "Medium" | "Low"
 
         let query = {};
+
+        // ── Name / ID search ──
         if (search) {
             const matchingUsers = await User.find({ name: { $regex: search, $options: 'i' } }).select('_id');
             const userIds = matchingUsers.map(u => u._id);
@@ -20,27 +24,54 @@ export const getAllStudents = async (req, res) => {
             ];
         }
 
-        let studentsQuery = StudentProfile.find(query).populate('user', 'name email');
-        
+        // ── Batch prefix filter (first N chars of studentId) ──
+        if (batch) {
+            query.studentId = { $regex: `^${batch}`, $options: 'i' };
+        }
+
+        // ── Risk category filter ──
+        if (risk) {
+            query['dropoutRisk.category'] = risk;
+        }
+
+        let studentsQuery = StudentProfile.find(query).populate('user', 'name email').sort({ 'dropoutRisk.score': -1 });
+
         if (limit === 'all') {
             const students = await studentsQuery;
             return res.status(200).json({ success: true, count: students.length, data: students });
         } else {
-            const total = await StudentProfile.countDocuments(query);
+            const total    = await StudentProfile.countDocuments(query);
             const students = await studentsQuery.skip((page - 1) * limit).limit(limit);
-            return res.status(200).json({ 
-                success: true, 
-                count: students.length, 
-                total,
-                page,
-                pages: Math.ceil(total / limit),
-                data: students 
+            return res.status(200).json({
+                success: true, count: students.length, total,
+                page, pages: Math.ceil(total / limit), data: students
             });
         }
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// @desc    Get distinct batch prefixes from student IDs
+// @route   GET /api/admin/batches
+// @access  Private (Admin)
+export const getDistinctBatches = async (req, res) => {
+    try {
+        const profiles = await StudentProfile.find({}, 'studentId');
+        // Extract leading digit sequences of length 3 as batch keys
+        const batchSet = new Set();
+        profiles.forEach(p => {
+            const match = (p.studentId || '').match(/^(\d{3})/);
+            if (match) batchSet.add(match[1]);
+        });
+        // Sort descending (newest batch first)
+        const batches = [...batchSet].sort((a, b) => b.localeCompare(a));
+        res.status(200).json({ success: true, data: batches });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
 // @desc    Get dashboard aggregated stats
 // @route   GET /api/admin/dashboard-stats
@@ -57,27 +88,27 @@ export const getDashboardStats = async (req, res) => {
             if(stat._id) distribution[stat._id] = stat.count;
         });
 
-        const avgAttData = await StudentProfile.aggregate([
-            { $group: { _id: null, avg: { $avg: "$attendance" } } }
+        const avgData = await StudentProfile.aggregate([
+            { $group: { _id: null, avgAtt: { $avg: "$attendance" }, avgGpa: { $avg: "$gpa" } } }
         ]);
-        const avgAttendance = avgAttData.length > 0 ? avgAttData[0].avg.toFixed(1) : 0;
+        const avgAttendance = avgData.length > 0 ? +avgData[0].avgAtt.toFixed(1) : 0;
+        const avgGpa       = avgData.length > 0 ? +avgData[0].avgGpa.toFixed(2) : 0;
 
-        const gpaBuckets = [0, 0, 0, 0];
+        // 10-point CGPA scale buckets: <5, 5-6, 6-7, 7-8, 8-9, 9-10
+        const cgpaBuckets = [0, 0, 0, 0, 0, 0];
         const gpaData = await StudentProfile.aggregate([
             {
                 $bucket: {
                     groupBy: "$gpa",
-                    boundaries: [0, 2, 3, 3.5, 4.1],
+                    boundaries: [0, 5, 6, 7, 8, 9, 10.1],
                     default: "Other",
                     output: { count: { $sum: 1 } }
                 }
             }
         ]);
+        const bucketMap = { 0: 0, 5: 1, 6: 2, 7: 3, 8: 4, 9: 5 };
         gpaData.forEach(b => {
-            if (b._id === 0) gpaBuckets[0] = b.count;
-            else if (b._id === 2) gpaBuckets[1] = b.count;
-            else if (b._id === 3) gpaBuckets[2] = b.count;
-            else if (b._id === 3.5) gpaBuckets[3] = b.count;
+            if (bucketMap[b._id] !== undefined) cgpaBuckets[bucketMap[b._id]] = b.count;
         });
 
         res.status(200).json({
@@ -85,13 +116,16 @@ export const getDashboardStats = async (req, res) => {
             data: {
                 totalStudents,
                 atRisk: distribution['High'] || 0,
+                mediumRisk: distribution['Medium'] || 0,
                 avgAttendance,
+                avgGpa,
                 distribution: [
                     distribution['High'] || 0,
                     distribution['Medium'] || 0,
                     distribution['Low'] || 0
                 ],
-                gpaDistribution: gpaBuckets
+                gpaDistribution: cgpaBuckets,
+                gpaLabels: ['< 5', '5-6', '6-7', '7-8', '8-9', '9-10']
             }
         });
     } catch (error) {
@@ -120,32 +154,35 @@ export const recalculateRisk = async (req, res) => {
     try {
         const students = await StudentProfile.find();
         const updates = students.map(async (s) => {
-            // Rule-based logic similar to ML service
-            const gpaScore = s.gpa * 15;
-            const attendanceScore = s.attendance * 0.5;
-            const riskScore = Math.max(0, Math.min(100, 100 - (gpaScore + attendanceScore)));
+            // Derive effective CGPA: use root field if set, else average semester TGPAs
+            const semGpas = (s.academicHistory || []).map(h => h.gpa).filter(g => g > 0);
+            const effectiveCgpa = (s.gpa && s.gpa > 0)
+                ? s.gpa
+                : semGpas.length > 0
+                    ? semGpas.reduce((a, b) => a + b, 0) / semGpas.length
+                    : 0;
+
+            // 10-point CGPA scale: CGPA contributes 60%, attendance 40%
+            const gpaComponent        = (effectiveCgpa / 10) * 60;
+            const attendanceComponent = (s.attendance / 100) * 40;
+            const riskScore = Math.max(0, Math.min(100, 100 - (gpaComponent + attendanceComponent)));
 
             let category = 'Low';
-            let reason = 'Steady performance';
+            let reason   = 'Steady performance';
 
-            if (riskScore > 70) {
+            if (riskScore > 65) {
                 category = 'High';
-                reason = s.attendance < 75 ? 'Critical Attendance' : 'Critical GPA';
-            } else if (riskScore > 35) {
+                reason   = s.attendance < 70 ? 'Critical Attendance' : 'Critical CGPA';
+            } else if (riskScore > 40) {
                 category = 'Medium';
-                reason = s.attendance < 85 ? 'Low Engagement' : 'Academic Warning';
+                reason   = s.attendance < 80 ? 'Low Engagement' : 'Academic Warning';
             }
 
-            s.dropoutRisk = {
-                score: Math.round(riskScore),
-                category,
-                reason
-            };
+            s.dropoutRisk = { score: Math.round(riskScore), category, reason };
             return s.save();
         });
 
         await Promise.all(updates);
-
         res.status(200).json({ success: true, message: 'Risk scores updated successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -223,28 +260,23 @@ export const updateStudentProfile = async (req, res) => {
         if (gpa !== undefined) profile.gpa = gpa;
         if (attendance !== undefined) profile.attendance = attendance;
 
-        // Auto-recalculate risk after update
-        const gpaScore = profile.gpa * 15;
-        const attendanceScore = profile.attendance * 0.5;
-        const riskScore = Math.max(0, Math.min(100, 100 - (gpaScore + attendanceScore)));
+        // 10-point CGPA scale
+        const gpaComponent        = (profile.gpa / 10) * 60;
+        const attendanceComponent = (profile.attendance / 100) * 40;
+        const riskScore = Math.max(0, Math.min(100, 100 - (gpaComponent + attendanceComponent)));
 
         let category = 'Low';
-        let reason = 'Steady performance';
+        let reason   = 'Steady performance';
 
-        if (riskScore > 70) {
+        if (riskScore > 65) {
             category = 'High';
-            reason = profile.attendance < 75 ? 'Critical Attendance' : 'Critical GPA';
-        } else if (riskScore > 35) {
+            reason   = profile.attendance < 70 ? 'Critical Attendance' : 'Critical CGPA';
+        } else if (riskScore > 40) {
             category = 'Medium';
-            reason = profile.attendance < 85 ? 'Low Engagement' : 'Academic Warning';
+            reason   = profile.attendance < 80 ? 'Low Engagement' : 'Academic Warning';
         }
 
-        profile.dropoutRisk = {
-            score: Math.round(riskScore),
-            category,
-            reason
-        };
-
+        profile.dropoutRisk = { score: Math.round(riskScore), category, reason };
         await profile.save();
 
         res.status(200).json({ success: true, data: profile });
@@ -280,19 +312,20 @@ export const createStudent = async (req, res) => {
             verificationStatus: 'approved'
         });
 
-        const gpaScore = (gpa || 0) * 15;
-        const attendanceScore = (attendance || 0) * 0.5;
-        const riskScore = Math.max(0, Math.min(100, 100 - (gpaScore + attendanceScore)));
+        // 10-point CGPA scale
+        const gpaComponent        = ((gpa || 0) / 10) * 60;
+        const attendanceComponent = ((attendance || 0) / 100) * 40;
+        const riskScore = Math.max(0, Math.min(100, 100 - (gpaComponent + attendanceComponent)));
 
         let category = 'Low';
-        let reason = 'Steady performance';
+        let reason   = 'Steady performance';
 
-        if (riskScore > 70) {
+        if (riskScore > 65) {
             category = 'High';
-            reason = (attendance || 0) < 75 ? 'Critical Attendance' : 'Critical GPA';
-        } else if (riskScore > 35) {
+            reason   = (attendance || 0) < 70 ? 'Critical Attendance' : 'Critical CGPA';
+        } else if (riskScore > 40) {
             category = 'Medium';
-            reason = (attendance || 0) < 85 ? 'Low Engagement' : 'Academic Warning';
+            reason   = (attendance || 0) < 80 ? 'Low Engagement' : 'Academic Warning';
         }
 
         const profile = await StudentProfile.create({
