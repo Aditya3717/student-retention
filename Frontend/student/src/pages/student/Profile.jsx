@@ -113,6 +113,7 @@ const Profile = () => {
                             careerRecommendations: dash.data.data.recommendations || [],
                             dropoutRisk: dash.data.data.dropoutRisk || { category: 'Low' },
                             studentId: dash.data.data.studentId || localUser.studentId || null,
+                            batch: dash.data.data.batch || localUser.batch || null,
                         });
                         return;
                     }
@@ -183,8 +184,14 @@ const Profile = () => {
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/8 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                 <Hash size={10} /> {profile?.studentId || 'No ID'}
                             </span>
+                            {/* ── Batch Badge ── */}
+                            {profile?.batch && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                                    <GraduationCap size={10} /> Batch {profile.batch}
+                                </span>
+                            )}
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/8 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                <GraduationCap size={10} /> {totalSemesters} Semester{totalSemesters !== 1 ? 's' : ''}
+                                <BookOpen size={10} /> {totalSemesters} Semester{totalSemesters !== 1 ? 's' : ''}
                             </span>
                             <RiskBadge category={risk} />
                         </div>
@@ -200,11 +207,29 @@ const Profile = () => {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard icon={TrendingUp}     label="Current CGPA"      value={profile?.gpa?.toFixed(2) || '—'}    color="text-sky-400"     delay={0.10} />
-                <StatCard icon={Calendar}       label="Attendance"       value={`${profile?.attendance || 0}%`}      color="text-indigo-400"  delay={0.14} />
-                <StatCard icon={BookOpen}       label="Credits Earned"   value={totalCredits}                        color="text-emerald-400" delay={0.18} />
-                <StatCard icon={Award}          label="Semesters"        value={totalSemesters}                      color="text-amber-400"   delay={0.22} />
+                <StatCard icon={TrendingUp}  label="Current CGPA"    value={profile?.gpa?.toFixed(2) || '—'}  color="text-sky-400"     delay={0.10} />
+                <StatCard icon={Calendar}    label="Attendance"      value={`${profile?.attendance || 0}%`}    color="text-indigo-400"  delay={0.14} />
+                <StatCard icon={BookOpen}    label="Credits Earned"  value={totalCredits}                      color="text-emerald-400" delay={0.18} />
+                <StatCard icon={Award}       label="Semesters"       value={totalSemesters}                    color="text-amber-400"   delay={0.22} />
             </div>
+
+            {/* Batch Info Banner */}
+            {profile?.batch && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                    className="flex items-center gap-4 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl px-6 py-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                        <GraduationCap size={18} className="text-indigo-400" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400/70">Enrolled Batch</p>
+                        <p className="text-white font-black text-lg italic tracking-tight">B.Tech CSE — Batch {profile.batch}</p>
+                    </div>
+                    <div className="ml-auto text-right hidden sm:block">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">Academic Year</p>
+                        <p className="text-slate-400 font-black text-sm">{profile.batch} – {parseInt(profile.batch) + 4}</p>
+                    </div>
+                </motion.div>
+            )}
 
             {/* Skills + Career side by side */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -271,7 +296,7 @@ const Profile = () => {
                                         <span className="text-sm font-black text-white italic uppercase">{sem.semester}</span>
                                         <span className="text-[10px] text-slate-500 font-semibold">{sem.subjects.length} subjects</span>
                                     </div>
-                                    <span className="text-sm font-black text-primary-400">GPA {sem.gpa?.toFixed(2)}</span>
+                                    <span className="text-sm font-black text-primary-400">CGPA {sem.gpa?.toFixed(2)}</span>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs">

@@ -23,8 +23,8 @@ export const getModelStatus = async (req, res) => {
 // @access  Private (Admin)
 export const trainSynthetic = async (req, res) => {
     try {
-        const { model_type = 'random_forest', n_samples = 1000 } = req.body;
-        const response = await axios.post(`${ML_SERVICE_URL}/ml/train`, { model_type, n_samples }, { timeout: 60000 });
+        const { model_type = 'random_forest', n_samples = 5000 } = req.body;
+        const response = await axios.post(`${ML_SERVICE_URL}/ml/train`, { model_type, n_samples }, { timeout: 120000 });
         res.status(200).json({ success: true, data: response.data });
     } catch (error) {
         if (error.code === 'ECONNREFUSED') {
@@ -67,75 +67,105 @@ export const trainFromCSV = async (req, res) => {
 };
 
 // @desc    Run ML predictions on all students and update their profiles
+//          Predictions are saved to StudentProfile.dropoutRisk
+//          Visible in: Admin → At-Risk Students page & Student Portal → Risk card
+//          Processes in chunks of 500 to handle 17,000+ students safely
 // @route   POST /api/ml/run-predictions
 // @access  Private (Admin)
 export const runBulkPredictions = async (req, res) => {
     try {
-        const profiles = await StudentProfile.find().populate('user', 'name email');
+        const CHUNK_SIZE = 500;  // Process 500 students per ML call — safe for any size dataset
 
-        if (profiles.length === 0) {
-            return res.status(200).json({ success: true, message: 'No student profiles found to predict.', updated: 0 });
+        // Optional: filter by a specific batch (e.g. ?batch=2025)
+        const batchFilter = req.query.batch ? { batch: req.query.batch } : {};
+
+        const totalCount = await StudentProfile.countDocuments(batchFilter);
+
+        if (totalCount === 0) {
+            return res.status(200).json({ success: true, message: 'No student profiles found.', updated: 0 });
         }
 
-        const studentDataArray = profiles.map(p => {
-            // Derive effective CGPA from semester history when root field is 0
-            const semGpas = (p.academicHistory || []).map(h => h.gpa).filter(g => g > 0);
-            const effectiveCgpa = (p.gpa && p.gpa > 0)
-                ? p.gpa
-                : semGpas.length > 0 ? semGpas.reduce((a, b) => a + b, 0) / semGpas.length : 0;
+        let totalUpdated = 0;
+        let totalChunks  = Math.ceil(totalCount / CHUNK_SIZE);
+        let chunksDone   = 0;
 
-            // Real credits from academic history
-            const creditsEarned = (p.academicHistory || []).reduce(
-                (acc, h) => acc + (h.subjects || []).reduce((s, sub) => s + (sub.credits || 0), 0), 0
-            ) || 120;
+        // Process one chunk at a time using skip/limit — never loads all data into RAM at once
+        for (let skip = 0; skip < totalCount; skip += CHUNK_SIZE) {
+            const profiles = await StudentProfile.find(batchFilter)
+                .skip(skip)
+                .limit(CHUNK_SIZE)
+                .populate('user', 'name email')
+                .lean();   // lean() = plain JS objects = much less memory
 
-            // Previous semester CGPA (second-to-last semester if available)
-            const prevSemGpa = semGpas.length >= 2 ? semGpas[semGpas.length - 2] : effectiveCgpa;
+            if (profiles.length === 0) break;
 
-            return {
-                gpa: effectiveCgpa,
-                attendance: p.attendance || 0,
-                credits_earned: creditsEarned,
-                extracurricular_score: 50,
-                previous_semester_gpa: prevSemGpa,
-            };
-        });
+            // Build CGPA payload for this chunk
+            const studentDataArray = profiles.map(p => {
+                const semGpas = (p.academicHistory || []).map(h => h.gpa).filter(g => g > 0);
+                const effectiveCgpa = (p.gpa && p.gpa > 0)
+                    ? p.gpa
+                    : semGpas.length > 0 ? semGpas.reduce((a, b) => a + b, 0) / semGpas.length : 0;
 
-        const student_ids = profiles.map(p => p._id.toString());
+                const creditsEarned = (p.academicHistory || []).reduce(
+                    (acc, h) => acc + (h.subjects || []).reduce((s, sub) => s + (sub.credits || 0), 0), 0
+                ) || 120;
 
-        const mlResponse = await axios.post(`${ML_SERVICE_URL}/ml/predict-bulk`, {
-            students: studentDataArray,
-            student_ids,
-        }, { timeout: 300000 }); // 5 min — handles 8000+ students
+                const prevSemCgpa = semGpas.length >= 2 ? semGpas[semGpas.length - 2] : effectiveCgpa;
 
-        const predictions = mlResponse.data.predictions;
+                return {
+                    cgpa:                   effectiveCgpa,
+                    attendance:             p.attendance || 0,
+                    credits_earned:         creditsEarned,
+                    extracurricular_score:  50,
+                    previous_semester_cgpa: prevSemCgpa,
+                };
+            });
 
-        const updates = predictions.map(async (pred) => {
-            const profile = profiles.find(p => p._id.toString() === pred.student_id);
-            if (!profile) return;
+            const student_ids = profiles.map(p => p._id.toString());
 
-            const reasonMap = {
-                High: profile.attendance < 70 ? 'Critical Attendance' : 'Critical CGPA',
-                Medium: profile.attendance < 80 ? 'Low Engagement' : 'Academic Warning',
-                Low: 'Steady Performance',
-            };
+            // Send this chunk to ML service
+            const mlResponse = await axios.post(`${ML_SERVICE_URL}/ml/predict-bulk`, {
+                students: studentDataArray,
+                student_ids,
+            }, { timeout: 60000 });
 
-            profile.dropoutRisk = {
-                score: pred.risk_score,
-                category: pred.category,
-                reason: reasonMap[pred.category] || 'Assessed by ML',
-            };
+            const predictions = mlResponse.data.predictions;
 
-            return profile.save();
-        });
+            // Write DB updates for this chunk in parallel
+            const updates = predictions.map(async (pred) => {
+                const profile = profiles.find(p => p._id.toString() === pred.student_id);
+                if (!profile) return;
 
-        await Promise.all(updates);
+                const attendance = profile.attendance || 0;
+                const reasonMap = {
+                    High:   attendance < 70 ? 'Critical Attendance' : 'Critical CGPA',
+                    Medium: attendance < 80 ? 'Low Engagement'      : 'Academic Warning',
+                    Low:    'Steady Performance',
+                };
+
+                return StudentProfile.findByIdAndUpdate(pred.student_id, {
+                    dropoutRisk: {
+                        score:    pred.risk_score,
+                        category: pred.category,
+                        reason:   reasonMap[pred.category] || 'Assessed by ML',
+                    }
+                });
+            });
+
+            await Promise.all(updates);
+            totalUpdated += predictions.length;
+            chunksDone++;
+
+            console.log(`[ML Bulk] Chunk ${chunksDone}/${totalChunks} done — ${totalUpdated}/${totalCount} students processed`);
+        }
 
         res.status(200).json({
-            success: true,
-            message: `ML predictions applied to ${predictions.length} students.`,
-            updated: predictions.length,
-            model_used: predictions[0]?.model_used || 'unknown',
+            success:          true,
+            message:          `ML predictions applied to ${totalUpdated} students in ${chunksDone} chunks.`,
+            updated:          totalUpdated,
+            total_in_db:      totalCount,
+            chunks_processed: chunksDone,
+            chunk_size:       CHUNK_SIZE,
         });
     } catch (error) {
         if (error.code === 'ECONNREFUSED') {
@@ -150,13 +180,21 @@ export const runBulkPredictions = async (req, res) => {
 // @access  Private (Admin)
 export const predictSingle = async (req, res) => {
     try {
-        const { gpa, attendance, credits_earned, extracurricular_score, previous_semester_gpa } = req.body;
+        // Accept both `cgpa` and legacy `gpa` field names from callers
+        const cgpa               = req.body.cgpa ?? req.body.gpa ?? 0;
+        const attendance         = req.body.attendance ?? 0;
+        const credits_earned     = req.body.credits_earned ?? 120;
+        const extracurricular_score = req.body.extracurricular_score ?? 50;
+        const previous_semester_cgpa = req.body.previous_semester_cgpa ?? req.body.previous_semester_gpa ?? cgpa;
+
         const response = await axios.post(`${ML_SERVICE_URL}/ml/predict-risk`, {
-            gpa, attendance,
-            credits_earned: credits_earned || 120,
-            extracurricular_score: extracurricular_score || 50,
-            previous_semester_gpa: previous_semester_gpa || gpa,
+            cgpa,
+            attendance,
+            credits_earned,
+            extracurricular_score,
+            previous_semester_cgpa,
         }, { timeout: 10000 });
+
         res.status(200).json({ success: true, data: response.data });
     } catch (error) {
         if (error.code === 'ECONNREFUSED') {

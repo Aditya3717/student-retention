@@ -74,7 +74,7 @@ const GradeCalculator = ({ currentGpa, completedCredits }) => {
                     </div>
                     <div>
                         <h3 className="text-lg font-black text-white italic uppercase tracking-tight">Grade Calculator</h3>
-                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">What-if GPA Simulator</p>
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">What-if CGPA Simulator</p>
                     </div>
                 </div>
                 <button onClick={reset} className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/5 transition-all text-xs font-semibold">
@@ -86,7 +86,7 @@ const GradeCalculator = ({ currentGpa, completedCredits }) => {
             <div className="mb-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl flex items-center gap-4">
                 <Target size={18} className="text-indigo-400 shrink-0" />
                 <div className="flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Target GPA (optional)</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Target CGPA (optional)</p>
                     <input
                         type="number"
                         min="0" max="10" step="0.1"
@@ -155,7 +155,7 @@ const GradeCalculator = ({ currentGpa, completedCredits }) => {
                     onClick={calculate}
                     className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] active:scale-95"
                 >
-                    Calculate GPA
+                    Calculate CGPA
                 </button>
             </div>
 
@@ -169,7 +169,7 @@ const GradeCalculator = ({ currentGpa, completedCredits }) => {
                         className="grid grid-cols-3 gap-3 p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl"
                     >
                         <div className="text-center">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Sem GPA</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Sem CGPA</p>
                             <p className="text-2xl font-black text-white italic">{result.semesterGpa.toFixed(2)}</p>
                         </div>
                         <div className="text-center border-x border-white/5">

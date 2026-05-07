@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import StudentProfile from '../models/StudentProfile.js';
 
-// Protect routes
+// Protect routes — verify JWT and attach user to req
 export const protect = async (req, res, next) => {
     let token;
 
@@ -9,21 +10,23 @@ export const protect = async (req, res, next) => {
         req.headers.authorization &&
         req.headers.authorization.startsWith('Bearer')
     ) {
-        // Set token from Bearer token in header
         token = req.headers.authorization.split(' ')[1];
     }
 
-    // Make sure token exists
     if (!token) {
         return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
     }
 
     try {
-        // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        req.user = await User.findById(decoded.id);
+        // Ensure user still exists (handles deleted accounts with live tokens)
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User no longer exists' });
+        }
 
+        req.user = user;
         next();
     } catch (err) {
         return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
@@ -36,9 +39,33 @@ export const authorize = (...roles) => {
         if (!roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
-                message: `User role ${req.user.role} is not authorized to access this route`,
+                message: `Access denied. Required role: ${roles.join(' or ')}`,
             });
         }
         next();
     };
+};
+
+// Ensure a student can only access their OWN profile
+// Usage: router.get('/profile/:studentId', protect, authorize('student'), checkOwnership)
+export const checkOwnership = async (req, res, next) => {
+    try {
+        // Admins bypass ownership check
+        if (req.user.role === 'admin') return next();
+
+        const profile = await StudentProfile.findOne({ user: req.user._id });
+        if (!profile) {
+            return res.status(404).json({ success: false, message: 'Profile not found' });
+        }
+
+        // If a specific studentId is requested, ensure it matches the logged-in student
+        if (req.params.studentId && req.params.studentId !== profile.studentId) {
+            return res.status(403).json({ success: false, message: 'Access denied. You can only view your own profile.' });
+        }
+
+        req.studentProfile = profile; // Attach for downstream use
+        next();
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 };

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, animate, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
-import { cacheGet, cacheSet } from '../../utils/dataCache';
+import { cacheGet, cacheSet, cacheClear } from '../../utils/dataCache';
 import {
     TrendingUp, TrendingDown, Users, BookOpen, Target, Zap,
     ChevronRight, Loader2, ArrowRight, ShieldCheck, AlertTriangle,
@@ -30,7 +30,7 @@ const Counter = ({ value, decimals = 0, suffix = '' }) => {
 };
 
 /* ── Stat card ── */
-const StatCard = ({ title, value, sub, icon: Icon, trendVal, trendLabel, trendPositive, delay = 0, onClick, accent = 'sky' }) => {
+const StatCard = React.memo(({ title, value, sub, icon: Icon, trendVal, trendLabel, trendPositive, delay = 0, onClick, accent = 'sky' }) => {
     const accentMap = {
         sky:     { icon: 'text-sky-400',     bg: 'bg-sky-400/10',     border: 'border-sky-400/20'     },
         emerald: { icon: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
@@ -76,7 +76,7 @@ const StatCard = ({ title, value, sub, icon: Icon, trendVal, trendLabel, trendPo
             </div>
         </motion.div>
     );
-};
+});
 
 /* ── Dropout risk config ── */
 const riskConfig = {
@@ -96,8 +96,12 @@ const StudentDashboard = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
+        // ── Clear old combined batchStats cache on every mount ──
+        cacheClear('batchStats');
+
         const cachedDash  = cacheGet('dashboard');
-        const cachedBatch = cacheGet('batchStats');
+        const batchKey    = cachedDash?.batch ? `batchStats_${cachedDash.batch}` : 'batchStats_unknown';
+        const cachedBatch = cacheGet(batchKey);
 
         // If both are cached, skip network entirely
         if (cachedDash && cachedBatch) {
@@ -107,62 +111,48 @@ const StudentDashboard = () => {
             return;
         }
 
-        const fetchDash  = cachedDash  ? Promise.resolve({ data: { success: true, data: cachedDash  } }) : api.get('/students/dashboard');
-        const fetchBatch = cachedBatch ? Promise.resolve({ data: { success: true, data: cachedBatch } }) : api.get('/students/batch-stats');
+        const fetchDash  = cachedDash ? Promise.resolve({ data: { success: true, data: cachedDash } }) : api.get('/students/dashboard');
+        const fetchBatch = api.get('/students/batch-stats'); // Always fresh — batch-scoped by server
 
         Promise.all([fetchDash, fetchBatch])
             .then(([d, b]) => {
+                const dash = d.data.data;
                 if (d.data.success) {
-                    setDash(d.data.data);
-                    cacheSet('dashboard', d.data.data);
-                    sessionStorage.setItem('dashboardData', JSON.stringify(d.data.data));
+                    setDash(dash);
+                    cacheSet('dashboard', dash);
+                    sessionStorage.setItem('dashboardData', JSON.stringify(dash));
                 }
                 if (b.data.success) {
-                    setBatchStats(b.data.data);
-                    cacheSet('batchStats', b.data.data);
+                    const bStats = b.data.data;
+                    setBatchStats(bStats);
+                    const key = dash?.batch ? `batchStats_${dash.batch}` : 'batchStats_unknown';
+                    cacheSet(key, bStats);
                 }
             })
             .catch(console.error)
             .finally(() => setIsLoading(false));
     }, []);
 
-    if (isLoading) return (
-        <div className="flex items-center justify-center min-h-[60vh]">
-            <Loader2 className="animate-spin text-primary-500" size={40} />
-        </div>
-    );
+    /* ── All derived data and memos must come BEFORE any early returns (Rules of Hooks) ── */
 
-    /* ── Derived data ── */
-    const history     = dash?.academicHistory || [];
-    const latestSem   = history[history.length - 1];
-    const prevSem     = history[history.length - 2];
-    const semLabels   = history.map(h => h.semester);
-    const semGpas     = history.map(h => h.gpa);
-
+    const history      = dash?.academicHistory || [];
+    const latestSem    = history[history.length - 1];
+    const prevSem      = history[history.length - 2];
+    const semLabels    = history.map(h => h.semester);
+    const semGpas      = history.map(h => h.gpa);
     const totalCredits = history.reduce((a, s) => a + s.subjects.reduce((b, x) => b + (x.credits || 0), 0), 0);
+    const cgpaDiff     = latestSem && prevSem ? +(latestSem.gpa - prevSem.gpa).toFixed(2) : null;
+    const cgpaUp       = cgpaDiff !== null ? cgpaDiff >= 0 : true;
+    const att          = dash?.attendance || 0;
+    const attStatus    = att >= 85 ? 'Good' : att >= 75 ? 'Warning' : 'Critical';
+    const risk         = dash?.dropoutRisk || { category: 'Low', score: 0 };
+    const rc           = riskConfig[risk.category] || riskConfig.Low;
+    const RiskIcon     = rc.icon;
+    const recs         = dash?.recommendations || [];
+    const batchCgpa    = batchStats?.batchCgpa ?? null;
+    const vsGap        = batchCgpa !== null ? +(dash?.gpa - batchCgpa).toFixed(2) : null;
 
-    // Real CGPA trend: latest vs previous semester
-    const cgpaDiff = latestSem && prevSem ? +(latestSem.gpa - prevSem.gpa).toFixed(2) : null;
-    const cgpaUp   = cgpaDiff !== null ? cgpaDiff >= 0 : true;
-
-    // Attendance status
-    const att    = dash?.attendance || 0;
-    const attStatus = att >= 85 ? 'Good' : att >= 75 ? 'Warning' : 'Critical';
-
-    // Dropout risk
-    const risk   = dash?.dropoutRisk || { category: 'Low', score: 0 };
-    const rc     = riskConfig[risk.category] || riskConfig.Low;
-    const RiskIcon = rc.icon;
-
-    // Career recommendations from DB
-    const recs = dash?.recommendations || [];
-
-    // Batch comparison
-    const batchCgpa = batchStats?.batchCgpa ?? null;
-    const vsGap     = batchCgpa !== null ? +(dash?.gpa - batchCgpa).toFixed(2) : null;
-
-    /* ── Chart ── */
-    const chartData = {
+    const chartData = useMemo(() => ({
         labels: semLabels.length ? semLabels : ['N/A'],
         datasets: [{
             label: 'CGPA',
@@ -178,9 +168,9 @@ const StudentDashboard = () => {
             pointBackgroundColor: '#0ea5e9', pointBorderColor: '#fff',
             pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 9,
         }],
-    };
+    }), [semLabels, semGpas]);
 
-    const chartOptions = {
+    const chartOptions = useMemo(() => ({
         responsive: true, maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
@@ -190,7 +180,15 @@ const StudentDashboard = () => {
             y: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#64748b', font: { size: 10, weight: 'bold' } }, min: 0, max: 10 },
             x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10, weight: 'bold' } } },
         },
-    };
+    }), []);
+
+    // ── NOW it is safe to do early returns after all hooks are called ──
+    if (isLoading) return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+            <Loader2 className="animate-spin text-primary-500" size={40} />
+        </div>
+    );
+
 
     return (
         <div className="space-y-8 pb-16">
@@ -198,7 +196,14 @@ const StudentDashboard = () => {
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">My Dashboard</h2>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Live Academic Overview · {dash?.studentId}</p>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mt-1">
+                        Live Academic Overview · {dash?.studentId}
+                        {dash?.batch && (
+                            <span className="ml-2 inline-flex items-center gap-1 text-indigo-400">
+                                · Batch {dash.batch}
+                            </span>
+                        )}
+                    </p>
                 </div>
                 <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest bg-slate-800/50 border border-white/5 px-4 py-2 rounded-full self-start sm:self-auto">
                     {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -233,7 +238,7 @@ const StudentDashboard = () => {
                     icon={Award}
                     trendVal={vsGap !== null ? (vsGap >= 0 ? `+${vsGap} vs batch` : `${vsGap} vs batch`) : undefined}
                     trendPositive={vsGap !== null ? vsGap >= 0 : true}
-                    sub={batchCgpa ? `Batch avg CGPA: ${batchCgpa}` : undefined}
+                    sub={dash?.batch ? `Batch ${dash.batch} · Avg CGPA: ${batchCgpa ?? '—'}` : batchCgpa ? `Batch avg CGPA: ${batchCgpa}` : undefined}
                     delay={0.2} onClick={() => navigate('/student/analytics')}
                 />
             </div>
@@ -347,7 +352,7 @@ const StudentDashboard = () => {
                         </div>
                         {latestSem && (
                             <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
-                                GPA {latestSem.gpa?.toFixed(2)}
+                                CGPA {latestSem.gpa?.toFixed(2)}
                             </span>
                         )}
                     </div>

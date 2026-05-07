@@ -190,7 +190,7 @@ const Academics = () => {
                 >
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic">{selectedSemester} — Semester GPA</p>
+                            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic">{selectedSemester} — Semester CGPA</p>
                             <h3 className="text-6xl font-black text-white mb-2 italic tracking-tighter">{tgpa.toFixed(2)}</h3>
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">This Semester's Performance</p>
                         </div>
@@ -253,7 +253,7 @@ const Academics = () => {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-2xl font-black text-white italic tracking-tighter leading-none mb-1">{h.gpa.toFixed(2)}</p>
-                                    <span className="text-[8px] text-slate-600 uppercase font-black tracking-[0.3em]">Semester GPA</span>
+                                    <span className="text-[8px] text-slate-600 uppercase font-black tracking-[0.3em]">Semester CGPA</span>
                                 </div>
                             </motion.div>
                         ))}

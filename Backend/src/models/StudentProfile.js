@@ -9,7 +9,12 @@ const studentProfileSchema = new mongoose.Schema({
     studentId: {
         type: String,
         required: true,
-        unique: true,
+        // NOTE: uniqueness is enforced by compound index {studentId, batch} below
+    },
+    batch: {
+        type: String,   // e.g. "2025", "2026"
+        required: true,
+        index: true,
     },
     gpa: {
         type: Number,
@@ -53,5 +58,8 @@ const studentProfileSchema = new mongoose.Schema({
         },
     ],
 });
+
+// Compound unique index: same studentId can exist in different batches
+studentProfileSchema.index({ studentId: 1, batch: 1 }, { unique: true });
 
 export default mongoose.model('StudentProfile', studentProfileSchema);

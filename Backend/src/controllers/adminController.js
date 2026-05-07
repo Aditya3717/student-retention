@@ -52,21 +52,15 @@ export const getAllStudents = async (req, res) => {
     }
 };
 
-// @desc    Get distinct batch prefixes from student IDs
+// @desc    Get distinct batches from StudentProfile.batch field
 // @route   GET /api/admin/batches
 // @access  Private (Admin)
 export const getDistinctBatches = async (req, res) => {
     try {
-        const profiles = await StudentProfile.find({}, 'studentId');
-        // Extract leading digit sequences of length 3 as batch keys
-        const batchSet = new Set();
-        profiles.forEach(p => {
-            const match = (p.studentId || '').match(/^(\d{3})/);
-            if (match) batchSet.add(match[1]);
-        });
-        // Sort descending (newest batch first)
-        const batches = [...batchSet].sort((a, b) => b.localeCompare(a));
-        res.status(200).json({ success: true, data: batches });
+        // Use the real batch field — distinct values, sorted descending (newest first)
+        const batches = await StudentProfile.distinct('batch');
+        const sorted  = batches.filter(Boolean).sort((a, b) => b.localeCompare(a));
+        res.status(200).json({ success: true, data: sorted });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -78,30 +72,34 @@ export const getDistinctBatches = async (req, res) => {
 // @access  Private (Admin)
 export const getDashboardStats = async (req, res) => {
     try {
-        const totalStudents = await StudentProfile.countDocuments();
+        const batchFilter   = req.query.batch ? { batch: req.query.batch } : {};
+        const totalStudents = await StudentProfile.countDocuments(batchFilter);
         
         const distribution = { High: 0, Medium: 0, Low: 0 };
         const atRiskStats = await StudentProfile.aggregate([
-            { $group: { _id: "$dropoutRisk.category", count: { $sum: 1 } } }
+            { $match: batchFilter },
+            { $group: { _id: '$dropoutRisk.category', count: { $sum: 1 } } }
         ]);
         atRiskStats.forEach(stat => {
-            if(stat._id) distribution[stat._id] = stat.count;
+            if (stat._id) distribution[stat._id] = stat.count;
         });
 
         const avgData = await StudentProfile.aggregate([
-            { $group: { _id: null, avgAtt: { $avg: "$attendance" }, avgGpa: { $avg: "$gpa" } } }
+            { $match: batchFilter },
+            { $group: { _id: null, avgAtt: { $avg: '$attendance' }, avgGpa: { $avg: '$gpa' } } }
         ]);
         const avgAttendance = avgData.length > 0 ? +avgData[0].avgAtt.toFixed(1) : 0;
-        const avgGpa       = avgData.length > 0 ? +avgData[0].avgGpa.toFixed(2) : 0;
+        const avgGpa        = avgData.length > 0 ? +avgData[0].avgGpa.toFixed(2) : 0;
 
         // 10-point CGPA scale buckets: <5, 5-6, 6-7, 7-8, 8-9, 9-10
         const cgpaBuckets = [0, 0, 0, 0, 0, 0];
         const gpaData = await StudentProfile.aggregate([
+            { $match: batchFilter },
             {
                 $bucket: {
-                    groupBy: "$gpa",
+                    groupBy: '$gpa',
                     boundaries: [0, 5, 6, 7, 8, 9, 10.1],
-                    default: "Other",
+                    default: 'Other',
                     output: { count: { $sum: 1 } }
                 }
             }
@@ -115,14 +113,15 @@ export const getDashboardStats = async (req, res) => {
             success: true,
             data: {
                 totalStudents,
-                atRisk: distribution['High'] || 0,
-                mediumRisk: distribution['Medium'] || 0,
+                atRisk:      distribution['High']   || 0,
+                mediumRisk:  distribution['Medium'] || 0,
                 avgAttendance,
                 avgGpa,
+                batch: req.query.batch || 'all',
                 distribution: [
-                    distribution['High'] || 0,
+                    distribution['High']   || 0,
                     distribution['Medium'] || 0,
-                    distribution['Low'] || 0
+                    distribution['Low']    || 0
                 ],
                 gpaDistribution: cgpaBuckets,
                 gpaLabels: ['< 5', '5-6', '6-7', '7-8', '8-9', '9-10']
@@ -138,9 +137,10 @@ export const getDashboardStats = async (req, res) => {
 // @access  Private (Admin)
 export const getAtRiskStudents = async (req, res) => {
     try {
-        const atRisk = await StudentProfile.find({
-            'dropoutRisk.category': { $in: ['Medium', 'High'] }
-        }).populate('user', 'name email');
+        const query = { 'dropoutRisk.category': { $in: ['Medium', 'High'] } };
+        if (req.query.batch) query.batch = req.query.batch;
+
+        const atRisk = await StudentProfile.find(query).populate('user', 'name email');
 
         res.status(200).json({ success: true, count: atRisk.length, data: atRisk });
     } catch (error) {
@@ -290,7 +290,7 @@ export const updateStudentProfile = async (req, res) => {
 // @access  Private (Admin)
 export const createStudent = async (req, res) => {
     try {
-        const { name, email, password, registrationNumber, gpa, attendance } = req.body;
+        const { name, email, password, registrationNumber, gpa, attendance, batch } = req.body;
 
         const userExists = await User.findOne({ 
             $or: [
@@ -309,6 +309,7 @@ export const createStudent = async (req, res) => {
             password,
             role: 'student',
             registrationNumber,
+            batch: batch || null,
             verificationStatus: 'approved'
         });
 
@@ -329,15 +330,12 @@ export const createStudent = async (req, res) => {
         }
 
         const profile = await StudentProfile.create({
-            user: student._id,
-            studentId: registrationNumber,
-            gpa: gpa || 0,
+            user:       student._id,
+            studentId:  registrationNumber,
+            batch:      batch || 'unassigned',
+            gpa:        gpa || 0,
             attendance: attendance || 0,
-            dropoutRisk: {
-                score: Math.round(riskScore),
-                category,
-                reason
-            }
+            dropoutRisk: { score: Math.round(riskScore), category, reason }
         });
 
         res.status(201).json({
@@ -382,9 +380,10 @@ export const verifyStudent = async (req, res) => {
             const profileExists = await StudentProfile.findOne({ user: user._id });
             if (!profileExists) {
                 await StudentProfile.create({
-                    user: user._id,
-                    studentId: user.registrationNumber || `STU-${Math.floor(Math.random() * 10000)}`,
-                    gpa: 0,
+                    user:       user._id,
+                    studentId:  user.registrationNumber || `STU-${Math.floor(Math.random() * 10000)}`,
+                    batch:      user.batch || 'unassigned',
+                    gpa:        0,
                     attendance: 0,
                     dropoutRisk: { score: 0, category: 'Low', reason: 'New Registration' }
                 });

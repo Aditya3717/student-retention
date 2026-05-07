@@ -36,6 +36,11 @@ const userSchema = new mongoose.Schema({
         unique: true,
         sparse: true,
     },
+    batch: {
+        type: String,   // e.g. "2025", "2026"
+        default: null,
+        index: true,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

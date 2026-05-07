@@ -27,7 +27,7 @@ const MLTraining = () => {
     const [serviceOnline, setServiceOnline] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [modelType, setModelType] = useState('random_forest');
-    const [nSamples, setNSamples] = useState(1000);
+    const [nSamples, setNSamples] = useState(5000);
     const [isTraining, setIsTraining] = useState(false);
     const [isPredicting, setIsPredicting] = useState(false);
     const [toast, setToast] = useState(null);
@@ -253,7 +253,7 @@ const MLTraining = () => {
                             <div className="flex flex-col items-center gap-2">
                                 <Upload size={28} className="text-slate-600" />
                                 <p className="text-slate-400 font-bold text-sm">Drop CSV here or click to browse</p>
-                                <p className="text-slate-600 text-xs">Required columns: <code className="text-slate-400">gpa, attendance, risk_label</code></p>
+                                <p className="text-slate-600 text-xs">Required columns: <code className="text-slate-400">cgpa, attendance, risk_label</code></p>
                             </div>
                         )}
                     </div>
@@ -267,9 +267,9 @@ const MLTraining = () => {
                     {/* CSV format hint */}
                     <div className="bg-black/20 rounded-2xl p-4 border border-white/5">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Expected CSV Format</p>
-                        <code className="text-[10px] text-slate-400 font-mono">gpa, attendance, credits_earned, risk_label</code>
-                        <br /><code className="text-[10px] text-slate-500 font-mono">3.5, 88, 120, Low</code>
-                        <br /><code className="text-[10px] text-slate-500 font-mono">1.8, 60, 90, High</code>
+                        <code className="text-[10px] text-slate-400 font-mono">cgpa, attendance, credits_earned, risk_label</code>
+                        <br /><code className="text-[10px] text-slate-500 font-mono">8.5, 88, 120, Low</code>
+                        <br /><code className="text-[10px] text-slate-500 font-mono">4.2, 60, 90, High</code>
                     </div>
                 </div>
             </div>

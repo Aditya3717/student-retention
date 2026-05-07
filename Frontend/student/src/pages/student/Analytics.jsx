@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
-import { cacheGet, cacheSet } from '../../utils/dataCache';
+import { cacheGet, cacheSet, cacheClear } from '../../utils/dataCache';
 import {
     Loader2, BookOpen, TrendingUp, TrendingDown, AlertTriangle,
     CheckCircle2, Star, ChevronDown, BarChart2, Activity, Target, Flame
@@ -39,8 +39,14 @@ const Analytics = () => {
     const [semDropOpen, setSemDropOpen] = useState(false);
 
     useEffect(() => {
-        const cachedDash  = cacheGet('dashboard');
-        const cachedBatch = cacheGet('batchStats');
+        // ── Always clear the old generic (combined) batchStats cache ──
+        // This forces a fresh batch-scoped fetch from the server.
+        cacheClear('batchStats');
+
+        const cachedDash = cacheGet('dashboard');
+        // Use batch-keyed cache key so Batch 2025 and Batch 2026 never share data
+        const batchKey   = cachedDash?.batch ? `batchStats_${cachedDash.batch}` : 'batchStats_unknown';
+        const cachedBatch = cacheGet(batchKey);
 
         if (cachedDash && cachedBatch) {
             setData(cachedDash);
@@ -50,12 +56,22 @@ const Analytics = () => {
         }
 
         const fetchDash  = cachedDash  ? Promise.resolve({ data: { success: true, data: cachedDash  } }) : api.get('/students/dashboard');
-        const fetchBatch = cachedBatch ? Promise.resolve({ data: { success: true, data: cachedBatch } }) : api.get('/students/batch-stats');
+        const fetchBatch = api.get('/students/batch-stats'); // Always fresh — scoped by server to student's batch
 
         Promise.all([fetchDash, fetchBatch])
             .then(([dashRes, batchRes]) => {
-                if (dashRes.data.success) { setData(dashRes.data.data); cacheSet('dashboard', dashRes.data.data); }
-                if (batchRes.data.success) { setBatchStats(batchRes.data.data); cacheSet('batchStats', batchRes.data.data); }
+                const dash = dashRes.data.data;
+                if (dashRes.data.success) {
+                    setData(dash);
+                    cacheSet('dashboard', dash);
+                }
+                if (batchRes.data.success) {
+                    const bStats = batchRes.data.data;
+                    setBatchStats(bStats);
+                    // Cache under batch-specific key
+                    const key = dash?.batch ? `batchStats_${dash.batch}` : 'batchStats_unknown';
+                    cacheSet(key, bStats);
+                }
             }).catch(console.error)
               .finally(() => setIsLoading(false));
     }, []);
@@ -228,9 +244,9 @@ const Analytics = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                     { label: 'Performance Score', value: `${perfScore}/100`, icon: Flame, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
-                    { label: 'Sem GPA', value: currentSem?.gpa?.toFixed(2) || '—', icon: TrendingUp, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
+                    { label: 'Sem CGPA', value: currentSem?.gpa?.toFixed(2) || '—', icon: TrendingUp, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' },
                     { label: 'Subjects This Sem', value: subjects.length, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-                    { label: 'GPA Δ vs Prev', value: activeSem === 0 ? '—' : (deltas[activeSem] >= 0 ? `+${deltas[activeSem]}` : `${deltas[activeSem]}`), icon: deltas[activeSem] >= 0 ? TrendingUp : TrendingDown, color: deltas[activeSem] >= 0 ? 'text-emerald-400' : 'text-rose-400', bg: deltas[activeSem] >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20' },
+                    { label: 'CGPA Δ vs Prev', value: activeSem === 0 ? '—' : (deltas[activeSem] >= 0 ? `+${deltas[activeSem]}` : `${deltas[activeSem]}`), icon: deltas[activeSem] >= 0 ? TrendingUp : TrendingDown, color: deltas[activeSem] >= 0 ? 'text-emerald-400' : 'text-rose-400', bg: deltas[activeSem] >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20' },
                 ].map((c, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
                         className={`border rounded-3xl p-5 backdrop-blur-xl ${c.bg}`}>
@@ -255,7 +271,7 @@ const Analytics = () => {
                             color: (data?.gpa ?? 0) >= (batchStats.batchCgpa ?? 0) ? 'text-emerald-400' : 'text-rose-400',
                             bg: (data?.gpa ?? 0) >= (batchStats.batchCgpa ?? 0) ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20',
                         },
-                        { label: 'Batch Size', value: batchStats.total, icon: Flame, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+                        { label: `Batch ${batchStats.batch || ''} Size`, value: batchStats.total, icon: Flame, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
                     ].map((c, i) => (
                         <div key={i} className={`border rounded-3xl p-5 backdrop-blur-xl ${c.bg}`}>
                             <c.icon size={18} className={`mb-2 ${c.color}`} />
@@ -302,7 +318,7 @@ const Analytics = () => {
                         <div>
                             <h3 className="text-lg font-black text-white italic uppercase tracking-tight">Batch CGPA Distribution</h3>
                             <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-0.5">
-                                {batchStats.total} students · Batch avg {batchStats.batchCgpa} · You are at {data?.gpa?.toFixed(2)}
+                                Your Batch {batchStats.batch ? `(${batchStats.batch})` : ''} · {batchStats.total} students · Avg CGPA {batchStats.batchCgpa} · You: {data?.gpa?.toFixed(2)}
                             </p>
                         </div>
                         <div className="flex gap-3 text-[9px] font-black uppercase tracking-widest">

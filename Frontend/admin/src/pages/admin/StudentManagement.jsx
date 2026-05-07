@@ -111,12 +111,8 @@ const StudentManagement = () => {
 
     const hasActiveFilters = searchTerm || batchFilter || riskFilter;
 
-    // Batch prefix → human-readable label. "123" → "Batch 2023"
-    const batchLabel = (prefix) => {
-        if (!prefix) return 'All Batches';
-        const year = prefix.length === 3 ? `20${prefix.slice(1)}` : prefix;
-        return `Batch ${year}`;
-    };
+    // Batch year → human-readable label. "2025" → "Batch 2025"
+    const batchLabel = (b) => b ? `Batch ${b}` : 'All Batches';
 
     const filteredStudents = students;
 
@@ -325,6 +321,7 @@ const StudentManagement = () => {
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 onSuccess={fetchStudents}
+                batches={batches}
             />
         </div>
     );
@@ -442,8 +439,8 @@ const EditStudentModal = ({ isOpen, onClose, student, onSuccess }) => {
     );
 };
 
-const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
-    const [formData, setFormData] = useState({ name: '', email: '', registrationNumber: '', password: '', gpa: 0, attendance: 0 });
+const AddStudentModal = ({ isOpen, onClose, onSuccess, batches = [] }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', registrationNumber: '', password: '', gpa: 0, attendance: 0, batch: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -459,7 +456,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
                     onSuccess();
                     onClose();
                     setMessage('');
-                    setFormData({ name: '', email: '', registrationNumber: '', password: '', cgpa: 0, attendance: 0 });
+                    setFormData({ name: '', email: '', registrationNumber: '', password: '', gpa: 0, attendance: 0, batch: '' });
                 }, 1500);
             }
         } catch (error) {
@@ -549,6 +546,22 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
                                         onChange={(e) => setFormData({...formData, password: e.target.value})}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Batch selector */}
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Batch Year</label>
+                                <select
+                                    className="w-full bg-slate-800/50 border border-white/10 rounded-2xl px-4 py-3 mt-1.5 text-white outline-none focus:border-indigo-500/50 transition-all font-semibold appearance-none cursor-pointer"
+                                    value={formData.batch}
+                                    onChange={(e) => setFormData({...formData, batch: e.target.value})}
+                                >
+                                    <option value="" className="bg-slate-900">-- Select Batch --</option>
+                                    {batches.map(b => (
+                                        <option key={b} value={b} className="bg-slate-900">Batch {b}</option>
+                                    ))}
+                                    <option value="unassigned" className="bg-slate-900">Unassigned</option>
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

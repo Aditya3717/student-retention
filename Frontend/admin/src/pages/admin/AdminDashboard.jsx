@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import {
     Users, AlertCircle, TrendingUp, UserCheck, Download, RefreshCw,
     Loader2, CheckCircle, AlertTriangle, ShieldCheck, BarChart3,
-    ArrowRight, Activity
+    ArrowRight, Activity, GraduationCap, ChevronDown
 } from 'lucide-react';
 import {
     Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -75,21 +75,31 @@ const RiskBadge = ({ cat }) => {
 /* ════════════════════════════ MAIN ════════════════════════════ */
 const AdminDashboard = () => {
     const navigate = useNavigate();
-    const [stats, setStats] = useState(null);
-    const [atRisk, setAtRisk] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [stats, setStats]             = useState(null);
+    const [atRisk, setAtRisk]           = useState([]);
+    const [isLoading, setIsLoading]     = useState(true);
     const [isRecalculating, setIsRecalculating] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [batches, setBatches]         = useState([]);       // available batch years
+    const [activeBatch, setActiveBatch] = useState('');       // '' = All Batches
 
-    const fetchData = async () => {
+    // Load batch list once
+    useEffect(() => {
+        api.get('/admin/batches')
+            .then(r => { if (r.data.success) setBatches(r.data.data); })
+            .catch(() => {});
+    }, []);
+
+    const fetchData = async (batch = activeBatch) => {
         try {
+            const params = batch ? `?batch=${batch}` : '';
             const [statsRes, riskRes] = await Promise.all([
-                api.get('/admin/dashboard-stats'),
-                api.get('/admin/at-risk'),
+                api.get(`/admin/dashboard-stats${params}`),
+                api.get(`/admin/at-risk${params}`),
             ]);
             if (statsRes.data.success) setStats(statsRes.data.data);
-            if (riskRes.data.success) setAtRisk(riskRes.data.data.slice(0, 5));
+            if (riskRes.data.success)  setAtRisk(riskRes.data.data.slice(0, 5));
         } catch (e) {
             console.error(e);
         } finally {
@@ -97,13 +107,18 @@ const AdminDashboard = () => {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(activeBatch); }, [activeBatch]);
+
+    const handleBatchChange = (b) => {
+        setActiveBatch(b);
+        setIsLoading(true);
+    };
 
     const handleRecalculate = async () => {
         setIsRecalculating(true);
         try {
             await api.post('/admin/recalculate-risk');
-            await fetchData();
+            await fetchData(activeBatch);
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (e) {
@@ -191,7 +206,21 @@ const AdminDashboard = () => {
                             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                     </div>
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex gap-3 flex-wrap items-center">
+                        {/* ── Batch Selector ── */}
+                        <div className="relative">
+                            <select
+                                value={activeBatch}
+                                onChange={e => handleBatchChange(e.target.value)}
+                                className="appearance-none bg-white/5 border border-white/10 rounded-xl pl-4 pr-9 py-2.5 text-sm text-white outline-none focus:border-indigo-500/50 transition-colors cursor-pointer min-w-[160px] font-semibold"
+                            >
+                                <option value="" className="bg-slate-900">All Batches</option>
+                                {batches.map(b => (
+                                    <option key={b} value={b} className="bg-slate-900">Batch {b}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                        </div>
                         <button onClick={handleRecalculate} disabled={isRecalculating}
                             className="flex items-center gap-2 bg-gradient-to-r from-sky-500 to-indigo-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-sky-500/20 disabled:opacity-50">
                             {isRecalculating ? <Loader2 className="animate-spin" size={15} /> : showSuccess ? <CheckCircle size={15} /> : <RefreshCw size={15} />}
@@ -251,7 +280,9 @@ const AdminDashboard = () => {
                     <div className="flex items-start justify-between mb-6">
                         <div>
                             <h3 className="text-lg font-black text-white uppercase italic tracking-tight">CGPA Distribution</h3>
-                            <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mt-0.5">Batch breakdown — 10-point scale</p>
+                            <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mt-0.5">
+                                {activeBatch ? `Batch ${activeBatch}` : 'All Batches'} — 10-point scale
+                            </p>
                         </div>
                         <span className="px-3 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl">
                             Live Data

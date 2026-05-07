@@ -11,9 +11,9 @@ import {
 /* ── Risk Score Bar ── */
 const RiskBar = ({ score, cat }) => {
     const cfg = {
-        High:   { bar: 'from-rose-600 to-rose-400',   track: 'bg-rose-500/10',   text: 'text-rose-400'   },
-        Medium: { bar: 'from-amber-600 to-amber-400',  track: 'bg-amber-500/10',  text: 'text-amber-400'  },
-        Low:    { bar: 'from-emerald-600 to-emerald-400', track: 'bg-emerald-500/10', text: 'text-emerald-400' },
+        High: { bar: 'from-rose-600 to-rose-400', track: 'bg-rose-500/10', text: 'text-rose-400' },
+        Medium: { bar: 'from-amber-600 to-amber-400', track: 'bg-amber-500/10', text: 'text-amber-400' },
+        Low: { bar: 'from-emerald-600 to-emerald-400', track: 'bg-emerald-500/10', text: 'text-emerald-400' },
     };
     const c = cfg[cat] || cfg.Medium;
     return (
@@ -33,9 +33,9 @@ const RiskBar = ({ score, cat }) => {
 /* ── Category Badge ── */
 const CatBadge = ({ cat }) => {
     const cfg = {
-        High:   { cls: 'text-rose-400 bg-rose-500/10 border-rose-500/20',    Icon: AlertCircle   },
-        Medium: { cls: 'text-amber-400 bg-amber-500/10 border-amber-500/20',  Icon: AlertTriangle },
-        Low:    { cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', Icon: ShieldCheck },
+        High: { cls: 'text-rose-400 bg-rose-500/10 border-rose-500/20', Icon: AlertCircle },
+        Medium: { cls: 'text-amber-400 bg-amber-500/10 border-amber-500/20', Icon: AlertTriangle },
+        Low: { cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', Icon: ShieldCheck },
     };
     const { cls, Icon } = cfg[cat] || cfg.Medium;
     return (
@@ -48,12 +48,12 @@ const CatBadge = ({ cat }) => {
 /* ── Student Profile Modal ── */
 const ProfileModal = ({ student, onClose }) => {
     if (!student) return null;
-    const cat   = student.dropoutRisk?.category || 'Low';
+    const cat = student.dropoutRisk?.category || 'Low';
     const score = student.dropoutRisk?.score ?? 0;
     const catColor = {
-        High:   'text-rose-400',
+        High: 'text-rose-400',
         Medium: 'text-amber-400',
-        Low:    'text-emerald-400',
+        Low: 'text-emerald-400',
     }[cat] || 'text-slate-300';
 
     const totalCredits = student.academicHistory?.reduce(
@@ -84,11 +84,10 @@ const ProfileModal = ({ student, onClose }) => {
                 {/* Header */}
                 <div className="sticky top-0 z-10 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/5 px-8 py-6 flex items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black border ${
-                            cat === 'High' ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
-                            : cat === 'Medium' ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                        }`}>
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black border ${cat === 'High' ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                                : cat === 'Medium' ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                            }`}>
                             {(student.user?.name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
                         <div>
@@ -112,19 +111,17 @@ const ProfileModal = ({ student, onClose }) => {
                         </p>
                         <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-                                    cat === 'High' ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
-                                    : cat === 'Medium' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-                                    : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                                }`}>{cat} Risk</span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${cat === 'High' ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                                        : cat === 'Medium' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                                            : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                                    }`}>{cat} Risk</span>
                                 <span className={`text-2xl font-black italic ${catColor}`}>{score}<span className="text-xs text-slate-600 font-normal ml-1">/100</span></span>
                             </div>
                             <div className="h-2 w-full rounded-full bg-white/5">
-                                <div className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${
-                                    cat === 'High' ? 'from-rose-600 to-rose-400'
-                                    : cat === 'Medium' ? 'from-amber-600 to-amber-400'
-                                    : 'from-emerald-600 to-emerald-400'
-                                }`} style={{ width: `${Math.min(score, 100)}%` }} />
+                                <div className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${cat === 'High' ? 'from-rose-600 to-rose-400'
+                                        : cat === 'Medium' ? 'from-amber-600 to-amber-400'
+                                            : 'from-emerald-600 to-emerald-400'
+                                    }`} style={{ width: `${Math.min(score, 100)}%` }} />
                             </div>
                             <p className="text-xs text-slate-400 font-semibold">
                                 Reason: <span className={catColor}>{student.dropoutRisk?.reason || 'System Assessment'}</span>
@@ -139,10 +136,14 @@ const ProfileModal = ({ student, onClose }) => {
                         </p>
                         <div className="grid grid-cols-3 gap-3">
                             {[
-                                { label: 'CGPA', value: effectiveCgpa.toFixed(2),
-                                  color: effectiveCgpa >= 7 ? 'text-emerald-400' : effectiveCgpa >= 5 ? 'text-amber-400' : 'text-rose-400' },
-                                { label: 'Attendance', value: `${student.attendance || 0}%`,
-                                  color: student.attendance >= 80 ? 'text-emerald-400' : student.attendance >= 70 ? 'text-amber-400' : 'text-rose-400' },
+                                {
+                                    label: 'CGPA', value: effectiveCgpa.toFixed(2),
+                                    color: effectiveCgpa >= 7 ? 'text-emerald-400' : effectiveCgpa >= 5 ? 'text-amber-400' : 'text-rose-400'
+                                },
+                                {
+                                    label: 'Attendance', value: `${student.attendance || 0}%`,
+                                    color: student.attendance >= 80 ? 'text-emerald-400' : student.attendance >= 70 ? 'text-amber-400' : 'text-rose-400'
+                                },
                                 { label: 'Credits', value: totalCredits, color: 'text-slate-300' },
                                 { label: 'Semesters', value: student.academicHistory?.length || 0, color: 'text-slate-300' },
                                 { label: 'Risk Score', value: score, color: catColor },
@@ -188,19 +189,17 @@ const ProfileModal = ({ student, onClose }) => {
                                                                 <p className="text-[9px] text-slate-600 font-mono">{sub.code}</p>
                                                             </td>
                                                             <td className="px-4 py-2">
-                                                                <span className={`text-[10px] font-black ${
-                                                                    ['O','A+','A'].includes(sub.grade) ? 'text-emerald-400'
-                                                                    : ['B+','B'].includes(sub.grade) ? 'text-amber-400'
-                                                                    : 'text-rose-400'
-                                                                }`}>{sub.grade || '—'}</span>
+                                                                <span className={`text-[10px] font-black ${['O', 'A+', 'A'].includes(sub.grade) ? 'text-emerald-400'
+                                                                        : ['B+', 'B'].includes(sub.grade) ? 'text-amber-400'
+                                                                            : 'text-rose-400'
+                                                                    }`}>{sub.grade || '—'}</span>
                                                             </td>
                                                             <td className="px-4 py-2 text-[10px] text-slate-400 font-semibold">{sub.credits || 0}</td>
                                                             <td className="px-4 py-2">
-                                                                <span className={`text-[10px] font-black ${
-                                                                    (sub.attendance || 0) >= 80 ? 'text-emerald-400'
-                                                                    : (sub.attendance || 0) >= 70 ? 'text-amber-400'
-                                                                    : 'text-rose-400'
-                                                                }`}>{sub.attendance || 0}%</span>
+                                                                <span className={`text-[10px] font-black ${(sub.attendance || 0) >= 80 ? 'text-emerald-400'
+                                                                        : (sub.attendance || 0) >= 70 ? 'text-amber-400'
+                                                                            : 'text-rose-400'
+                                                                    }`}>{sub.attendance || 0}%</span>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -270,11 +269,11 @@ const AlertModal = ({ student, onClose }) => {
     const [sent, setSent] = useState(false);
 
     const sendEmail = () => {
-        const name    = student.user?.name || 'Student';
-        const email   = student.user?.email || '';
-        const reason  = student.dropoutRisk?.reason || 'Academic concern';
+        const name = student.user?.name || 'Student';
+        const email = student.user?.email || '';
+        const reason = student.dropoutRisk?.reason || 'Academic concern';
         const subject = encodeURIComponent(`Academic Support — Action Required`);
-        const body    = encodeURIComponent(
+        const body = encodeURIComponent(
             `Dear ${name},\n\nThis is an important notice from the academic support team.\n\n` +
             `Our monitoring system has flagged your profile with an elevated dropout risk indicator.\n` +
             `Reason: ${reason}\n\nCurrent CGPA: ${student.gpa?.toFixed(2)}\nAttendance: ${student.attendance}%\n\n` +
@@ -355,15 +354,24 @@ const AlertModal = ({ student, onClose }) => {
    MAIN COMPONENT
 ══════════════════════════════════════════════ */
 const AtRiskStudents = () => {
-    const [allAtRisk, setAllAtRisk]   = useState([]);
-    const [isLoading, setIsLoading]   = useState(true);
+    const [allAtRisk, setAllAtRisk] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [catFilter, setCatFilter]   = useState('');
-    const [sortField, setSortField]   = useState('score');
-    const [sortDir, setSortDir]       = useState('desc');
+    const [catFilter, setCatFilter] = useState('');
+    const [sortField, setSortField] = useState('score');
+    const [sortDir, setSortDir] = useState('desc');
     const [alertStudent, setAlertStudent] = useState(null);
     const [profileStudent, setProfileStudent] = useState(null);
+    const [batches, setBatches] = useState([]);
+    const [activeBatch, setActiveBatch] = useState('');  // '' = All Batches
+
+    // Load batch list once
+    useEffect(() => {
+        api.get('/admin/batches')
+            .then(r => { if (r.data.success) setBatches(r.data.data); })
+            .catch(() => { });
+    }, []);
 
     // Debounce search — only filter after 300ms of inactivity
     useEffect(() => {
@@ -371,10 +379,11 @@ const AtRiskStudents = () => {
         return () => clearTimeout(t);
     }, [searchTerm]);
 
-    const fetchAtRisk = async () => {
+    const fetchAtRisk = async (batch = activeBatch) => {
         setIsLoading(true);
         try {
-            const res = await api.get('/admin/at-risk');
+            const params = batch ? `?batch=${batch}` : '';
+            const res = await api.get(`/admin/at-risk${params}`);
             if (res.data.success) setAllAtRisk(res.data.data);
         } catch (e) {
             console.error(e);
@@ -383,7 +392,7 @@ const AtRiskStudents = () => {
         }
     };
 
-    useEffect(() => { fetchAtRisk(); }, []);
+    useEffect(() => { fetchAtRisk(activeBatch); }, [activeBatch]);
 
     /* ── Step 1: Enrich CGPA once when raw data loads ── */
     const enrichedAtRisk = useMemo(() =>
@@ -394,7 +403,7 @@ const AtRiskStudents = () => {
                 : semGpas.length > 0 ? semGpas.reduce((a, b) => a + b, 0) / semGpas.length : 0;
             return { ...s, effectiveCgpa };
         })
-    , [allAtRisk]); // only re-runs when data actually changes
+        , [allAtRisk]); // only re-runs when data actually changes
 
     /* ── Step 2: Filter + sort (instant — no CGPA computation here) ── */
     const displayed = useMemo(() => {
@@ -413,9 +422,9 @@ const AtRiskStudents = () => {
 
         return [...list].sort((a, b) => {
             let av, bv;
-            if (sortField === 'score')     { av = a.dropoutRisk?.score ?? 0; bv = b.dropoutRisk?.score ?? 0; }
-            else if (sortField === 'cgpa') { av = a.effectiveCgpa;           bv = b.effectiveCgpa; }
-            else                           { av = a.attendance ?? 0;          bv = b.attendance ?? 0; }
+            if (sortField === 'score') { av = a.dropoutRisk?.score ?? 0; bv = b.dropoutRisk?.score ?? 0; }
+            else if (sortField === 'cgpa') { av = a.effectiveCgpa; bv = b.effectiveCgpa; }
+            else { av = a.attendance ?? 0; bv = b.attendance ?? 0; }
             return sortDir === 'desc' ? bv - av : av - bv;
         });
     }, [enrichedAtRisk, catFilter, debouncedSearch, sortField, sortDir]);
@@ -430,7 +439,7 @@ const AtRiskStudents = () => {
         return sortDir === 'desc' ? <ChevronDown size={12} className="text-indigo-400" /> : <ChevronUp size={12} className="text-indigo-400" />;
     };
 
-    const highCount   = allAtRisk.filter(s => s.dropoutRisk?.category === 'High').length;
+    const highCount = allAtRisk.filter(s => s.dropoutRisk?.category === 'High').length;
     const mediumCount = allAtRisk.filter(s => s.dropoutRisk?.category === 'Medium').length;
 
     return (
@@ -454,11 +463,14 @@ const AtRiskStudents = () => {
                         <div>
                             <h2 className="text-2xl font-black text-white tracking-tight italic uppercase">Active Early Warnings</h2>
                             <p className="text-slate-400 text-sm mt-1 font-medium max-w-xl">
-                                {allAtRisk.length} students flagged — <span className="text-rose-400 font-black">{highCount} High</span> · <span className="text-amber-400 font-black">{mediumCount} Medium</span>
+                                {allAtRisk.length} students flagged —
+                                {' '}<span className="text-rose-400 font-black">{highCount} High</span>
+                                {' · '}<span className="text-amber-400 font-black">{mediumCount} Medium</span>
+                                {activeBatch && <span className="text-slate-500"> · Batch {activeBatch}</span>}
                             </p>
                         </div>
                     </div>
-                    <button onClick={fetchAtRisk}
+                    <button onClick={() => fetchAtRisk(activeBatch)}
                         className="flex items-center gap-2 px-5 py-2.5 border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all self-start">
                         <RefreshCw size={14} /> Refresh
                     </button>
@@ -467,10 +479,10 @@ const AtRiskStudents = () => {
                 {/* Stat chips */}
                 <div className="relative z-10 flex flex-wrap gap-4 mt-6">
                     {[
-                        { label: 'Total At-Risk',  value: allAtRisk.length, color: 'border-white/10 text-slate-300',  bg: 'bg-white/5'        },
-                        { label: 'High Risk',      value: highCount,        color: 'border-rose-500/20 text-rose-400',  bg: 'bg-rose-500/5'   },
-                        { label: 'Medium Risk',    value: mediumCount,      color: 'border-amber-500/20 text-amber-400', bg: 'bg-amber-500/5'  },
-                        { label: 'Shown',          value: displayed.length, color: 'border-indigo-500/20 text-indigo-400', bg: 'bg-indigo-500/5' },
+                        { label: 'Total At-Risk', value: allAtRisk.length, color: 'border-white/10 text-slate-300', bg: 'bg-white/5' },
+                        { label: 'High Risk', value: highCount, color: 'border-rose-500/20 text-rose-400', bg: 'bg-rose-500/5' },
+                        { label: 'Medium Risk', value: mediumCount, color: 'border-amber-500/20 text-amber-400', bg: 'bg-amber-500/5' },
+                        { label: 'Shown', value: displayed.length, color: 'border-indigo-500/20 text-indigo-400', bg: 'bg-indigo-500/5' },
                     ].map(({ label, value, color, bg }) => (
                         <div key={label} className={`flex items-center gap-3 px-4 py-2 rounded-xl border ${bg} ${color}`}>
                             <span className="text-lg font-black italic">{value}</span>
@@ -495,34 +507,45 @@ const AtRiskStudents = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
-                <div className="relative">
-                    <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-                        className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pr-9 text-sm text-white outline-none focus:border-rose-500/30 transition-colors cursor-pointer min-w-[160px]">
-                        <option value=""       className="bg-slate-900">All Categories</option>
-                        <option value="High"   className="bg-slate-900">🔴 High Risk</option>
-                        <option value="Medium" className="bg-slate-900">🟡 Medium Risk</option>
-                    </select>
-                    <Filter size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                </div>
+                    {/* Batch filter */}
+                    <div className="relative">
+                        <select value={activeBatch} onChange={e => setActiveBatch(e.target.value)}
+                            className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pr-9 text-sm text-white outline-none focus:border-rose-500/30 transition-colors cursor-pointer min-w-[150px]">
+                            <option value="" className="bg-slate-900">All Batches</option>
+                            {batches.map(b => (
+                                <option key={b} value={b} className="bg-slate-900">Batch {b}</option>
+                            ))}
+                        </select>
+                        <GraduationCap size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
+                    {/* Category filter */}
+                    <div className="relative">
+                        <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+                            className="appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pr-9 text-sm text-white outline-none focus:border-rose-500/30 transition-colors cursor-pointer min-w-[160px]">
+                            <option value="" className="bg-slate-900">All Categories</option>
+                            <option value="High" className="bg-slate-900">🔴 High Risk</option>
+                            <option value="Medium" className="bg-slate-900">🟡 Medium Risk</option>
+                        </select>
+                        <Filter size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
 
-                {/* Sort buttons */}
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Sort:</span>
-                    {[
-                        { field: 'score',      label: 'Risk Score' },
-                        { field: 'cgpa',       label: 'CGPA'       },
-                        { field: 'attendance', label: 'Attendance'  },
-                    ].map(({ field, label }) => (
-                        <button key={field} onClick={() => toggleSort(field)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
-                                sortField === field
-                                    ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
-                                    : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'
-                            }`}>
-                            {label} <SortIcon field={field} />
-                        </button>
-                    ))}
-                </div>
+                    {/* Sort buttons */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest">Sort:</span>
+                        {[
+                            { field: 'score', label: 'Risk Score' },
+                            { field: 'cgpa', label: 'CGPA' },
+                            { field: 'attendance', label: 'Attendance' },
+                        ].map(({ field, label }) => (
+                            <button key={field} onClick={() => toggleSort(field)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${sortField === field
+                                        ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                                        : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'
+                                    }`}>
+                                {label} <SortIcon field={field} />
+                            </button>
+                        ))}
+                    </div>
                 </div> {/* end flex-wrap group: Category + Sort */}
             </div>
 
@@ -546,11 +569,10 @@ const AtRiskStudents = () => {
                                 <div className="relative z-10 flex flex-col lg:flex-row gap-6 items-start lg:items-center">
                                     {/* ── Identity ── */}
                                     <div className="flex items-center gap-4 min-w-[220px]">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black shrink-0 border ${
-                                            cat === 'High'
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black shrink-0 border ${cat === 'High'
                                                 ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
                                                 : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                                        }`}>{initials}</div>
+                                            }`}>{initials}</div>
                                         <div className="min-w-0">
                                             <p className="font-black text-white text-sm truncate">{s.user?.name || 'Unknown Student'}</p>
                                             <p className="text-[10px] text-slate-500 truncate font-semibold">{s.user?.email}</p>
