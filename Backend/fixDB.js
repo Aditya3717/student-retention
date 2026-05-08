@@ -7,30 +7,31 @@ dotenv.config();
 const fixDatabase = async () => {
     try {
         console.log('Connecting to MongoDB...');
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eduguard');
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/student-retention');
         console.log('✅ Connected.');
 
-        const profiles = await StudentProfile.find({});
+        // For Batch 2025, if they only have "Semester 1", rename it to "Semester 2"
+        const profiles = await StudentProfile.find({ batch: '2025' });
         let updatedCount = 0;
 
         for (const profile of profiles) {
             if (!profile.academicHistory) continue;
 
-            const originalLength = profile.academicHistory.length;
-            
-            // Filter out any semester that has NO subjects
-            profile.academicHistory = profile.academicHistory.filter(sem => 
-                sem.subjects && sem.subjects.length > 0
-            );
+            let modified = false;
+            for (let sem of profile.academicHistory) {
+                if (sem.semester === 'Semester 1') {
+                    sem.semester = 'Semester 2';
+                    modified = true;
+                }
+            }
 
-            if (profile.academicHistory.length !== originalLength) {
-                // We removed a bad semester, save it back
+            if (modified) {
                 await profile.save();
                 updatedCount++;
             }
         }
 
-        console.log(`\n🎉 FIXED! Cleaned up empty semesters from ${updatedCount} students.`);
+        console.log(`\n🎉 FIXED! Renamed Semester 1 to Semester 2 for ${updatedCount} students in Batch 2025.`);
         process.exit(0);
     } catch (error) {
         console.error('❌ Error fixing DB:', error);

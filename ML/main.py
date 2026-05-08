@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -17,7 +18,12 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.pipeline import Pipeline
 
-app = FastAPI(title="Student Retention ML Service", version="3.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_model_if_exists()
+    yield
+
+app = FastAPI(title="Student Retention ML Service", version="3.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -231,10 +237,7 @@ def predict_single(student: StudentData):
         "model_used":  model_store.get("model_type", "random_forest")
     }
 
-# --- Startup ---
-@app.on_event("startup")
-def startup_event():
-    load_model_if_exists()
+# --- Startup handled via lifespan context manager above ---
 
 # --- Routes ---
 @app.get("/")
