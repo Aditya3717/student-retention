@@ -48,7 +48,12 @@ cd student-retention
 cd Backend
 npm install
 ```
-- Create a `.env` file in the `Backend` directory with your database URI, JWT secret, and port configurations.
+- A `.env.example` file is provided in the `Backend` directory. Copy it to create your own `.env` file:
+  ```bash
+  cp .env.example .env
+  ```
+- **Team Collaboration**: To share data across the team, update the `MONGODB_URI` in your new `.env` file to point to your shared MongoDB Atlas cluster connection string. If developing locally without a team, you can leave it as the default `mongodb://localhost:27017/...`.
+- **Security Note**: Never commit your `.env` file to version control. It is already included in `.gitignore`.
 - Run the server:
   ```bash
   npm run dev
