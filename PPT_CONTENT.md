@@ -315,3 +315,17 @@ By identifying risk before it becomes failure, we ensure that every student has 
 ---
 *Questions?*
 *[Your Names] | May 2026*
+
+<!-- "I just pulled this Student Retention project from GitHub. I need to populate my local MongoDB database with the exact same data as my team member.
+
+Please perform the following operations:
+
+Check that my local MongoDB is running and available at mongodb://localhost:27017.
+Open the Backend directory, copy .env.example to .env, and run npm install.
+Seed Batch 2025: The importData.js script is currently configured for Batch 2025. Run node importData.js to create all the users and profiles from the 2023_Btech_cse_sem2_updated.xlsx file.
+Format Batch 2025: Run the special parsing script node fixBatch2025Data.js to intelligently split the Batch 2025 data into real Semester 1 and Semester 2 records.
+Seed Batch 2026: Modify the configuration variables at the very top of importData.js to target the second file:
+BATCH = '2026'
+EXCEL_FILE = path.resolve('../Batch 2026.csv')
+SEMESTER_LABEL = 'Semester 1'
+Run node importData.js one last time to seed the 2026 students. Tell me when the database is fully seeded and ready to go!" -->
